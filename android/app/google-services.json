@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "316103241279",
+    "firebase_url": "https://minibustracker-b2264-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "minibustracker-b2264",
+    "storage_bucket": "minibustracker-b2264.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:316103241279:android:fc5168d17e9df45decd28a",
+        "android_client_info": {
+          "package_name": "com.example.bus_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHkGKqXe7HQdad_xnrsUaWwbcSk7aJi-Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:316103241279:android:4244cc4d7688d8eeecd28a",
+        "android_client_info": {
+          "package_name": "com.example.minibustracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHkGKqXe7HQdad_xnrsUaWwbcSk7aJi-Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:316103241279:android:6defd4a91a5a2058ecd28a",
+        "android_client_info": {
+          "package_name": "shifradea.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHkGKqXe7HQdad_xnrsUaWwbcSk7aJi-Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
