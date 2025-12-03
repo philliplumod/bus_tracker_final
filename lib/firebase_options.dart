@@ -57,7 +57,8 @@ class DefaultFirebaseOptions {
     appId: '1:316103241279:android:fc5168d17e9df45decd28a',
     messagingSenderId: '316103241279',
     projectId: 'minibustracker-b2264',
-    databaseURL: 'https://minibustracker-b2264-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://minibustracker-b2264-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'minibustracker-b2264.firebasestorage.app',
   );
 }

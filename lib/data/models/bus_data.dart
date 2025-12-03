@@ -1,4 +1,6 @@
-class BusData {
+import 'package:equatable/equatable.dart';
+
+class BusData extends Equatable {
   final String id;
   final double latitude;
   final double longitude;
@@ -6,7 +8,7 @@ class BusData {
   final double speed;
   final String timestamp;
 
-  BusData({
+  const BusData({
     required this.id,
     required this.latitude,
     required this.longitude,
@@ -30,4 +32,14 @@ class BusData {
       timestamp: payload['timestamp'] as String? ?? timestampKey,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    latitude,
+    longitude,
+    altitude,
+    speed,
+    timestamp,
+  ];
 }

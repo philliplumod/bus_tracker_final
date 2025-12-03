@@ -18,6 +18,11 @@ dependencies:
   geolocator: ^13.0.2
   google_maps_flutter: ^2.10.0
   location: ^8.0.0
+  shared_preferences: ^2.5.3
+  flutter_animate: ^4.5.2
+  shimmer: ^3.0.0
+  hydrated_bloc: ^10.1.1
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
