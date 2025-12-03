@@ -219,7 +219,7 @@ class _MapPageState extends State<MapPage> {
         },
         child: const Icon(Icons.search),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
