@@ -9,12 +9,13 @@ class LoadUserLocation extends MapEvent {}
 
 class LoadNearbyBuses extends MapEvent {}
 
-class UpdateBusLocations extends MapEvent {
-  final List<Map<String, dynamic>> buses;
-  UpdateBusLocations(this.buses);
+class SubscribeToBusUpdates extends MapEvent {}
+
+class BusesUpdated extends MapEvent {
+  final List<dynamic> buses;
+
+  BusesUpdated(this.buses);
 
   @override
   List<Object?> get props => [buses];
 }
-
-class SubscribeToBusUpdates extends MapEvent {}
