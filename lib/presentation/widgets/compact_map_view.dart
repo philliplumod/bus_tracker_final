@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/utils/directions_service.dart';
 import '../../domain/entities/bus.dart';
 import '../../theme/app_theme.dart';
 
 class CompactMapView extends StatefulWidget {
-  final List<Bus> buses;
+  final Bus? selectedBus;
   final LatLng userPosition;
-  final LatLng? selectedBusPosition;
 
   const CompactMapView({
     super.key,
-    required this.buses,
+    this.selectedBus,
     required this.userPosition,
-    this.selectedBusPosition,
   });
 
   @override
@@ -27,9 +24,13 @@ class _CompactMapViewState extends State<CompactMapView> {
   @override
   void didUpdateWidget(CompactMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.selectedBusPosition != null &&
-        widget.selectedBusPosition != oldWidget.selectedBusPosition) {
-      _moveCameraToBus(widget.selectedBusPosition!);
+    if (widget.selectedBus != null &&
+        widget.selectedBus != oldWidget.selectedBus) {
+      final busPosition = LatLng(
+        widget.selectedBus!.latitude,
+        widget.selectedBus!.longitude,
+      );
+      _moveCameraToBus(busPosition);
     }
   }
 
@@ -43,11 +44,15 @@ class _CompactMapViewState extends State<CompactMapView> {
     Set<Polyline> polylines = {};
 
     // Show path to selected bus
-    if (widget.selectedBusPosition != null) {
+    if (widget.selectedBus != null) {
+      final busPosition = LatLng(
+        widget.selectedBus!.latitude,
+        widget.selectedBus!.longitude,
+      );
       polylines.add(
         Polyline(
           polylineId: const PolylineId('route_to_bus'),
-          points: [widget.userPosition, widget.selectedBusPosition!],
+          points: [widget.userPosition, busPosition],
           color: AppTheme.accentColor,
           width: 4,
           patterns: [PatternItem.dash(20), PatternItem.gap(10)],
@@ -71,22 +76,23 @@ class _CompactMapViewState extends State<CompactMapView> {
       ),
     );
 
-    // Bus markers
-    for (var bus in widget.buses) {
-      final busPosition = LatLng(bus.latitude, bus.longitude);
-      final isSelected = widget.selectedBusPosition == busPosition;
-
+    // Only show selected bus marker
+    if (widget.selectedBus != null) {
+      final busPosition = LatLng(
+        widget.selectedBus!.latitude,
+        widget.selectedBus!.longitude,
+      );
       markers.add(
         Marker(
-          markerId: MarkerId(bus.id),
+          markerId: MarkerId(widget.selectedBus!.id),
           position: busPosition,
           icon: BitmapDescriptor.defaultMarkerWithHue(
-            isSelected ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRed,
+            BitmapDescriptor.hueOrange,
           ),
           infoWindow: InfoWindow(
-            title: '🚌 Bus ${bus.id}',
+            title: '🚌 Bus ${widget.selectedBus!.id}',
             snippet:
-                '${bus.speed.toStringAsFixed(1)} km/h • ${bus.eta ?? "N/A"}',
+                '${widget.selectedBus!.speed.toStringAsFixed(1)} km/h • ${widget.selectedBus!.eta ?? "N/A"}',
           ),
         ),
       );
@@ -120,7 +126,7 @@ class _CompactMapViewState extends State<CompactMapView> {
           markers: _buildMarkers(),
           polylines: _buildPolylines(),
         ),
-        if (widget.buses.isNotEmpty)
+        if (widget.selectedBus != null)
           Positioned(
             top: 12,
             left: 12,
@@ -147,7 +153,7 @@ class _CompactMapViewState extends State<CompactMapView> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '${widget.buses.length}',
+                    'Bus ${widget.selectedBus!.id}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

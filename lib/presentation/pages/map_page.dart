@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/constants/app_constants.dart';
+import '../../domain/entities/bus.dart';
 import '../../theme/theme_cubit.dart';
 import '../bloc/map_bloc.dart';
 import '../bloc/map_event.dart';
@@ -17,7 +18,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
-  LatLng? _selectedBusPosition;
+  Bus? _selectedBus;
   bool _isSearching = false;
 
   @override
@@ -92,12 +93,11 @@ class _MapPageState extends State<MapPage> {
                   );
                 } else if (state is MapLoaded) {
                   return CompactMapView(
-                    buses: state.buses,
+                    selectedBus: _selectedBus,
                     userPosition: LatLng(
                       state.userLocation.latitude,
                       state.userLocation.longitude,
                     ),
-                    selectedBusPosition: _selectedBusPosition,
                   );
                 }
                 return Container(
@@ -160,10 +160,7 @@ class _MapPageState extends State<MapPage> {
                         bus: bus,
                         onTap: () {
                           setState(() {
-                            _selectedBusPosition = LatLng(
-                              bus.latitude,
-                              bus.longitude,
-                            );
+                            _selectedBus = bus;
                           });
                         },
                       );
