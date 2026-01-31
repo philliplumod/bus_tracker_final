@@ -82,6 +82,7 @@ class _CompactMapViewState extends State<CompactMapView> {
         widget.selectedBus!.latitude,
         widget.selectedBus!.longitude,
       );
+      final busLabel = widget.selectedBus!.busNumber ?? widget.selectedBus!.id;
       markers.add(
         Marker(
           markerId: MarkerId(widget.selectedBus!.id),
@@ -90,7 +91,7 @@ class _CompactMapViewState extends State<CompactMapView> {
             BitmapDescriptor.hueOrange,
           ),
           infoWindow: InfoWindow(
-            title: '🚌 Bus ${widget.selectedBus!.id}',
+            title: '🚌 Bus $busLabel',
             snippet:
                 '${widget.selectedBus!.speed.toStringAsFixed(1)} km/h • ${widget.selectedBus!.eta ?? "N/A"}',
           ),
@@ -153,7 +154,7 @@ class _CompactMapViewState extends State<CompactMapView> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Bus ${widget.selectedBus!.id}',
+                    'Bus ${widget.selectedBus!.busNumber ?? widget.selectedBus!.id}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

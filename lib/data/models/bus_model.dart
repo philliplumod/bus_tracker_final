@@ -3,6 +3,8 @@ import '../../domain/entities/bus.dart';
 class BusModel extends Bus {
   const BusModel({
     required super.id,
+    super.busNumber,
+    super.route,
     required super.latitude,
     required super.longitude,
     required super.altitude,
@@ -16,10 +18,16 @@ class BusModel extends Bus {
     String busId,
     String timestampKey,
     Map<Object?, Object?> data,
+    String? busNumber,
+    String? route,
   ) {
-    final payload = Map<String, dynamic>.from(data.values.first as Map);
+    final payload = Map<String, dynamic>.from(
+      data.values.first as Map<String, dynamic>,
+    );
     return BusModel(
       id: busId,
+      busNumber: busNumber,
+      route: route,
       latitude: (payload['lat'] as num?)?.toDouble() ?? 0.0,
       longitude: (payload['lng'] as num?)?.toDouble() ?? 0.0,
       altitude: (payload['alt'] as num?)?.toDouble() ?? 0.0,
@@ -42,6 +50,8 @@ class BusModel extends Bus {
   BusModel copyWithCalculations({double? distanceFromUser, String? eta}) {
     return BusModel(
       id: id,
+      busNumber: busNumber,
+      route: route,
       latitude: latitude,
       longitude: longitude,
       altitude: altitude,

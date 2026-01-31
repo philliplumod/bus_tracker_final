@@ -38,12 +38,21 @@ class BusListItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bus ${bus.id}',
+                      bus.busNumber != null
+                          ? 'Bus ${bus.busNumber}'
+                          : 'Bus ${bus.id}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
+                    if (bus.route != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Route: ${bus.route}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Row(
                       children: [

@@ -9,7 +9,9 @@ import '../../domain/repositories/location_repository.dart';
 import '../../domain/usecases/get_nearby_buses.dart';
 import '../../domain/usecases/get_user_location.dart';
 import '../../domain/usecases/watch_bus_updates.dart';
-import '../../presentation/bloc/map_bloc.dart';
+import '../../presentation/bloc/map/map_bloc.dart';
+import '../../presentation/bloc/bus_search/bus_search_bloc.dart';
+import '../../presentation/bloc/trip_solution/trip_solution_bloc.dart';
 import '../../theme/theme_cubit.dart';
 
 class DependencyInjection {
@@ -53,6 +55,16 @@ class DependencyInjection {
             getUserLocation: getUserLocation,
             getNearbyBuses: getNearbyBuses,
             watchBusUpdates: watchBusUpdates,
+          ),
+    ),
+    BlocProvider<BusSearchBloc>(
+      create: (_) => BusSearchBloc(getNearbyBuses: getNearbyBuses),
+    ),
+    BlocProvider<TripSolutionBloc>(
+      create:
+          (_) => TripSolutionBloc(
+            getUserLocation: getUserLocation,
+            getNearbyBuses: getNearbyBuses,
           ),
     ),
   ];

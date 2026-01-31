@@ -28,6 +28,8 @@ class BusRemoteDataSourceImpl implements BusRemoteDataSource {
       data.forEach((busId, busData) {
         if (busData is Map && busData.containsKey('location')) {
           final locationData = busData['location'] as Map<Object?, Object?>;
+          final busNumber = busData['busNumber'] as String?;
+          final route = busData['route'] as String?;
 
           // Get the most recent timestamp entry
           String? latestTimestamp;
@@ -50,6 +52,8 @@ class BusRemoteDataSourceImpl implements BusRemoteDataSource {
                 busId.toString(),
                 latestTimestamp!,
                 latestData!,
+                busNumber,
+                route,
               );
               buses.add(bus);
             } catch (e) {
@@ -80,6 +84,8 @@ class BusRemoteDataSourceImpl implements BusRemoteDataSource {
       data.forEach((busId, busData) {
         if (busData is Map && busData.containsKey('location')) {
           final locationData = busData['location'] as Map<Object?, Object?>;
+          final busNumber = busData['busNumber'] as String?;
+          final route = busData['route'] as String?;
 
           // Get the most recent timestamp entry
           String? latestTimestamp;
@@ -102,6 +108,8 @@ class BusRemoteDataSourceImpl implements BusRemoteDataSource {
                 busId.toString(),
                 latestTimestamp!,
                 latestData!,
+                busNumber,
+                route,
               );
               buses.add(bus);
             } catch (e) {

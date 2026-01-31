@@ -10,7 +10,7 @@ import 'service/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_cubit.dart';
 import 'theme/theme_state.dart';
-import 'presentation/pages/map_page.dart';
+import 'presentation/pages/main_menu_page.dart';
 import 'firebase_options.dart';
 
 Future<void> requestNotificationPermission() async {
@@ -71,7 +71,7 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: state.themeMode,
-            home: const SafeArea(child: MapPage()),
+            home: const SafeArea(child: MainMenuPage()),
           );
         },
       ),

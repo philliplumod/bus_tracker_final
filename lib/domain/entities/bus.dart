@@ -2,6 +2,8 @@ import 'package:equatable/equatable.dart';
 
 class Bus extends Equatable {
   final String id;
+  final String? busNumber;
+  final String? route;
   final double latitude;
   final double longitude;
   final double altitude;
@@ -13,6 +15,8 @@ class Bus extends Equatable {
 
   const Bus({
     required this.id,
+    this.busNumber,
+    this.route,
     required this.latitude,
     required this.longitude,
     required this.altitude,
@@ -25,6 +29,8 @@ class Bus extends Equatable {
 
   Bus copyWith({
     String? id,
+    String? busNumber,
+    String? route,
     double? latitude,
     double? longitude,
     double? altitude,
@@ -36,6 +42,8 @@ class Bus extends Equatable {
   }) {
     return Bus(
       id: id ?? this.id,
+      busNumber: busNumber ?? this.busNumber,
+      route: route ?? this.route,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       altitude: altitude ?? this.altitude,
@@ -50,6 +58,8 @@ class Bus extends Equatable {
   @override
   List<Object?> get props => [
     id,
+    busNumber,
+    route,
     latitude,
     longitude,
     altitude,

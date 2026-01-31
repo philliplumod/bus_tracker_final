@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/bus.dart';
-import '../../domain/entities/user_location.dart';
+import '../../../domain/entities/bus.dart';
+import '../../../domain/entities/user_location.dart';
 
 abstract class MapState extends Equatable {
   @override
