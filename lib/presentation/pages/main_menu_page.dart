@@ -1,11 +1,37 @@
 import 'package:flutter/material.dart';
 import '../../theme/theme_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/auth/auth_bloc.dart';
+import '../bloc/auth/auth_event.dart';
 import 'enter_bus_number_page.dart';
 import 'trip_solution_page.dart';
 
 class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
+
+  void _handleSignOut(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Sign Out'),
+            content: const Text('Are you sure you want to sign out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  context.read<AuthBloc>().add(SignOutRequested());
+                },
+                child: const Text('Sign Out'),
+              ),
+            ],
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +55,11 @@ class MainMenuPage extends StatelessWidget {
             onPressed: () {
               context.read<ThemeCubit>().toggleTheme();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _handleSignOut(context),
+            tooltip: 'Sign Out',
           ),
         ],
       ),

@@ -6,6 +6,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'core/di/dependency_injection.dart';
+import 'domain/entities/user.dart';
+import 'presentation/bloc/auth/auth_bloc.dart';
+import 'presentation/bloc/auth/auth_state.dart';
+import 'presentation/pages/login_page.dart';
+import 'presentation/pages/rider_map_page.dart';
 import 'service/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_cubit.dart';
@@ -51,7 +56,7 @@ Future<void> main() async {
   await NotificationService.init();
 
   // Initialize dependency injection
-  DependencyInjection.init();
+  await DependencyInjection.init();
 
   runApp(const MyApp());
 }
@@ -71,7 +76,33 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: state.themeMode,
-            home: const SafeArea(child: MainMenuPage()),
+            home: BlocBuilder<AuthBloc, AuthState>(
+              builder: (context, authState) {
+                if (authState is AuthLoading || authState is AuthInitial) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (authState is AuthAuthenticated) {
+                  // Route based on user role
+                  final user = authState.user;
+
+                  switch (user.role) {
+                    case UserRole.rider:
+                      return SafeArea(child: RiderMapPage(rider: user));
+                    case UserRole.passenger:
+                      return const SafeArea(child: MainMenuPage());
+                    case UserRole.admin:
+                      // TODO: Create admin page
+                      return const SafeArea(child: MainMenuPage());
+                  }
+                }
+
+                // Default to login page if unauthenticated
+                return const LoginPage();
+              },
+            ),
           );
         },
       ),
