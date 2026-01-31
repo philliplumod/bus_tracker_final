@@ -16,10 +16,6 @@ abstract class AuthRemoteDataSource {
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  // ⚠️ DEMO MODE: Set to true to test without a backend server
-  // Set to false when you have a real backend running
-  static const bool useDemoMode = true;
-
   // TODO: IMPORTANT - Replace with your actual backend API URL
   // This should point to your authentication server that handles:
   // - POST /api/auth/sign-in (for all roles: passenger, rider, admin)
@@ -33,7 +29,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   // For iOS Simulator, use: http://localhost:3000/api
   // For physical device, use your computer's IP: http://192.168.x.x:3000/api
   // For production, use: https://your-production-domain.com/api
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  //
+  // ⚠️ IMPORTANT: Make sure your backend server is running before using the app!
+  // Android Emulator: 10.0.2.2 is a special alias to your host machine's localhost
+  // Physical Device: Use your computer's actual IP address on the network
+  static const String baseUrl = 'http://192.168.18.10:3000/api';
   final http.Client client;
   final SharedPreferences prefs;
 
@@ -44,20 +44,33 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String email,
     required String password,
   }) async {
-    if (useDemoMode) {
-      return _demoSignIn(email: email, password: password);
-    }
-
     try {
-      final response = await client.post(
-        Uri.parse('$baseUrl/auth/sign-in'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
+      final response = await client
+          .post(
+            Uri.parse('$baseUrl/auth/sign-in'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception(
+                'Connection timed out. Please check your backend server.',
+              );
+            },
+          );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final user = UserModel.fromJson(data['user']);
+
+        // Store tokens if provided
+        if (data.containsKey('accessToken')) {
+          await prefs.setString('access_token', data['accessToken']);
+        }
+        if (data.containsKey('refreshToken')) {
+          await prefs.setString('refresh_token', data['refreshToken']);
+        }
 
         // Store user data locally
         await prefs.setString('user_id', user.id);
@@ -88,25 +101,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String password,
     required String name,
   }) async {
-    if (useDemoMode) {
-      return _demoSignUp(email: email, password: password, name: name);
-    }
-
     // IMPORTANT: This endpoint only allows PASSENGER registration.
     // Rider and Admin accounts must be created through the web dashboard.
     // The backend should enforce role = "passenger" for all signup requests.
 
     try {
-      final response = await client.post(
-        Uri.parse('$baseUrl/auth/sign-up'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-          'name': name,
-          // Note: Do not send 'role' field - backend will force it to 'passenger'
-        }),
-      );
+      final response = await client
+          .post(
+            Uri.parse('$baseUrl/auth/sign-up'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+              'name': name,
+              // Note: Do not send 'role' field - backend will force it to 'passenger'
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception(
+                'Connection timed out. Check: 1) Backend is running, 2) Firewall allows port 3000, 3) Phone and PC on same Wi-Fi',
+              );
+            },
+          );
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -115,6 +133,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         // Verify that the user is indeed a passenger
         if (user.role != UserRole.passenger) {
           throw Exception('Invalid user role returned from signup');
+        }
+
+        // Store tokens
+        if (data.containsKey('accessToken')) {
+          await prefs.setString('access_token', data['accessToken']);
+        }
+        if (data.containsKey('refreshToken')) {
+          await prefs.setString('refresh_token', data['refreshToken']);
         }
 
         // Store user data locally
@@ -138,23 +164,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> signOut() async {
-    if (useDemoMode) {
-      // Clear local storage in demo mode
-      await prefs.remove('user_id');
-      await prefs.remove('user_email');
-      await prefs.remove('user_name');
-      await prefs.remove('user_role');
-      await prefs.remove('user_assigned_route');
-      await prefs.remove('user_bus_name');
-      await prefs.remove('demo_password');
-      return;
-    }
-
     try {
-      await client.post(
-        Uri.parse('$baseUrl/auth/sign-out'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final accessToken = prefs.getString('access_token');
+      final headers = {'Content-Type': 'application/json'};
+
+      if (accessToken != null) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      await client.post(Uri.parse('$baseUrl/auth/sign-out'), headers: headers);
 
       // Clear local storage
       await prefs.remove('user_id');
@@ -163,9 +181,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await prefs.remove('user_role');
       await prefs.remove('user_assigned_route');
       await prefs.remove('user_bus_name');
+      await prefs.remove('access_token');
+      await prefs.remove('refresh_token');
     } catch (e) {
       // Even if API call fails, clear local data
-      await prefs.clear();
+      await prefs.remove('user_id');
+      await prefs.remove('user_email');
+      await prefs.remove('user_name');
+      await prefs.remove('user_role');
+      await prefs.remove('user_assigned_route');
+      await prefs.remove('user_bus_name');
+      await prefs.remove('access_token');
+      await prefs.remove('refresh_token');
       throw Exception('Sign out error: $e');
     }
   }
@@ -173,6 +200,43 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel?> getCurrentUser() async {
     try {
+      final accessToken = prefs.getString('access_token');
+
+      // If we have an access token, try to fetch from backend
+      if (accessToken != null) {
+        try {
+          final response = await client.get(
+            Uri.parse('$baseUrl/auth/user'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+          );
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final user = UserModel.fromJson(data['user']);
+
+            // Update local storage with fresh data
+            await prefs.setString('user_id', user.id);
+            await prefs.setString('user_email', user.email);
+            await prefs.setString('user_name', user.name);
+            await prefs.setString('user_role', _roleToString(user.role));
+            if (user.assignedRoute != null) {
+              await prefs.setString('user_assigned_route', user.assignedRoute!);
+            }
+            if (user.busName != null) {
+              await prefs.setString('user_bus_name', user.busName!);
+            }
+
+            return user;
+          }
+        } catch (e) {
+          // If backend call fails, fall back to local storage
+        }
+      }
+
+      // Fall back to local storage
       final userId = prefs.getString('user_id');
       if (userId == null) return null;
 
@@ -222,124 +286,5 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       default:
         return UserRole.passenger;
     }
-  }
-
-  // ============ DEMO MODE METHODS ============
-  // These methods simulate backend responses for testing without a server
-
-  Future<UserModel> _demoSignUp({
-    required String email,
-    required String password,
-    required String name,
-  }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Check if user already exists
-    final existingEmail = prefs.getString('user_email');
-    if (existingEmail == email) {
-      throw Exception('Email already exists');
-    }
-
-    // Validate inputs
-    if (!email.contains('@')) {
-      throw Exception('Invalid email format');
-    }
-    if (password.length < 6) {
-      throw Exception('Password must be at least 6 characters');
-    }
-    if (name.isEmpty) {
-      throw Exception('Name is required');
-    }
-
-    // Create passenger user
-    final user = UserModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      email: email,
-      name: name,
-      role: UserRole.passenger, // Always passenger for signup
-    );
-
-    // Store user data locally
-    await prefs.setString('user_id', user.id);
-    await prefs.setString('user_email', user.email);
-    await prefs.setString('user_name', user.name);
-    await prefs.setString('user_role', _roleToString(user.role));
-    await prefs.setString('demo_password', password); // Store for demo login
-
-    return user;
-  }
-
-  Future<UserModel> _demoSignIn({
-    required String email,
-    required String password,
-  }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Demo accounts for testing different roles
-    final demoAccounts = {
-      'passenger@test.com': {
-        'password': 'password123',
-        'name': 'Test Passenger',
-        'role': UserRole.passenger,
-      },
-      'rider@test.com': {
-        'password': 'password123',
-        'name': 'Test Rider',
-        'role': UserRole.rider,
-        'busName': 'Bus 101',
-        'assignedRoute': 'SM Cebu - Ayala Center',
-      },
-      'admin@test.com': {
-        'password': 'password123',
-        'name': 'Test Admin',
-        'role': UserRole.admin,
-      },
-    };
-
-    // Check demo accounts first
-    if (demoAccounts.containsKey(email)) {
-      final account = demoAccounts[email]!;
-      if (account['password'] == password) {
-        final user = UserModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          email: email,
-          name: account['name'] as String,
-          role: account['role'] as UserRole,
-          busName: account['busName'] as String?,
-          assignedRoute: account['assignedRoute'] as String?,
-        );
-
-        // Store user data locally
-        await prefs.setString('user_id', user.id);
-        await prefs.setString('user_email', user.email);
-        await prefs.setString('user_name', user.name);
-        await prefs.setString('user_role', _roleToString(user.role));
-        if (user.assignedRoute != null) {
-          await prefs.setString('user_assigned_route', user.assignedRoute!);
-        }
-        if (user.busName != null) {
-          await prefs.setString('user_bus_name', user.busName!);
-        }
-
-        return user;
-      }
-    }
-
-    // Check if user created via signup
-    final storedEmail = prefs.getString('user_email');
-    final storedPassword = prefs.getString('demo_password');
-
-    if (storedEmail == email && storedPassword == password) {
-      // Return the stored user
-      final currentUser = await getCurrentUser();
-      if (currentUser != null) {
-        return currentUser;
-      }
-    }
-
-    // Invalid credentials
-    throw Exception('Invalid email or password');
   }
 }
