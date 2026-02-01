@@ -26,9 +26,13 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
-    final mapBloc = context.read<MapBloc>();
-    mapBloc.add(LoadUserLocation());
-    mapBloc.add(SubscribeToBusUpdates());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final mapBloc = context.read<MapBloc>();
+        mapBloc.add(LoadUserLocation());
+        mapBloc.add(SubscribeToBusUpdates());
+      }
+    });
   }
 
   @override

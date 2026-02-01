@@ -24,8 +24,12 @@ class _RiderMapPageState extends State<RiderMapPage> {
   void initState() {
     super.initState();
     // Load rider's current location
-    context.read<MapBloc>().add(LoadUserLocation());
-    context.read<MapBloc>().add(SubscribeToBusUpdates());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<MapBloc>().add(LoadUserLocation());
+        context.read<MapBloc>().add(SubscribeToBusUpdates());
+      }
+    });
   }
 
   @override

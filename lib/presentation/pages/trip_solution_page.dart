@@ -19,7 +19,11 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
   @override
   void initState() {
     super.initState();
-    context.read<TripSolutionBloc>().add(LoadTripSolutionData());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<TripSolutionBloc>().add(LoadTripSolutionData());
+      }
+    });
   }
 
   @override

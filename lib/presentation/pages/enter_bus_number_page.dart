@@ -18,7 +18,11 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
   @override
   void initState() {
     super.initState();
-    context.read<BusSearchBloc>().add(LoadAllBuses());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<BusSearchBloc>().add(LoadAllBuses());
+      }
+    });
   }
 
   @override

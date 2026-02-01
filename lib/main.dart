@@ -76,7 +76,47 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: state.themeMode,
-            home: BlocBuilder<AuthBloc, AuthState>(
+            home: BlocConsumer<AuthBloc, AuthState>(
+              listener: (context, authState) {
+                // Handle errors at the app level to ensure SnackBar shows
+                if (authState is AuthError) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  authState.message,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 5),
+                          action: SnackBarAction(
+                            label: 'Dismiss',
+                            textColor: Colors.white,
+                            onPressed: () {
+                              ScaffoldMessenger.of(
+                                context,
+                              ).hideCurrentSnackBar();
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                  });
+                }
+              },
               builder: (context, authState) {
                 if (authState is AuthLoading || authState is AuthInitial) {
                   return const Scaffold(
@@ -99,7 +139,7 @@ class MyApp extends StatelessWidget {
                   }
                 }
 
-                // Default to login page if unauthenticated
+                // Default to login page if unauthenticated or error
                 return const LoginPage();
               },
             ),
