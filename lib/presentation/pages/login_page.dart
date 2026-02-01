@@ -51,9 +51,7 @@ class _LoginPageState extends State<LoginPage> {
           }
         },
         builder: (context, state) {
-          if (state is AuthLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          final isLoading = state is AuthLoading;
 
           return SafeArea(
             child: Center(
@@ -137,17 +135,29 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: _handleLogin,
+                        onPressed: isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text(
-                          'Sign In',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        child:
+                            isLoading
+                                ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                                : const Text(
+                                  'Sign In',
+                                  style: TextStyle(fontSize: 16),
+                                ),
                       ),
                       const SizedBox(height: 16),
                       Row(
