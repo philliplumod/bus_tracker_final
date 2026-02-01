@@ -98,6 +98,46 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         debugPrint('💾 User data stored in SharedPreferences');
         return user;
       } else if (response.statusCode == 401) {
+        // Parse error body to check for specific auth errors
+        try {
+          final errorData = jsonDecode(response.body);
+          final errorMessage = errorData['message'] ?? errorData['error'] ?? '';
+          final errorCode = errorData['code'] ?? '';
+
+          debugPrint(
+            '❌ Authentication failed: $errorMessage (code: $errorCode)',
+          );
+
+          // Check for specific error codes
+          if (errorMessage.toLowerCase().contains('email not confirmed') ||
+              errorCode == 'email_not_confirmed') {
+            throw Exception(
+              'Email not verified. Please check your email inbox and click the verification link, or contact your administrator.',
+            );
+          }
+
+          if (errorMessage.toLowerCase().contains(
+                'invalid login credentials',
+              ) ||
+              errorMessage.toLowerCase().contains('invalid credentials') ||
+              errorCode == 'invalid_credentials') {
+            throw Exception(
+              'Invalid email or password. Please double-check your credentials.',
+            );
+          }
+
+          // If we have a message from the backend, use it
+          if (errorMessage.isNotEmpty) {
+            throw Exception(errorMessage);
+          }
+        } catch (e) {
+          // If we already threw a formatted exception, rethrow it
+          if (e is Exception) {
+            rethrow;
+          }
+        }
+
+        // Default error message for 401
         debugPrint('❌ Authentication failed: Invalid credentials');
         throw Exception(
           'Invalid email or password. Please check your credentials and try again.',

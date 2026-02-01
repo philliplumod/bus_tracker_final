@@ -21,7 +21,12 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Right(user);
     } catch (e) {
-      return Left(NetworkFailure(e.toString()));
+      // Clean up error message by removing "Exception: " prefix
+      String errorMessage = e.toString();
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+      return Left(NetworkFailure(errorMessage));
     }
   }
 
@@ -39,7 +44,12 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Right(user);
     } catch (e) {
-      return Left(NetworkFailure(e.toString()));
+      // Clean up error message by removing "Exception: " prefix
+      String errorMessage = e.toString();
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(11);
+      }
+      return Left(NetworkFailure(errorMessage));
     }
   }
 
