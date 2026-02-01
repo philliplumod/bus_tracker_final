@@ -149,6 +149,7 @@ Operation Fails (e.g., SharedPreferences write error)
 ## Component Responsibilities
 
 ### Presentation Layer (Cubits)
+
 - ✅ Manage UI state
 - ✅ Coordinate use cases
 - ✅ Handle user interactions
@@ -157,6 +158,7 @@ Operation Fails (e.g., SharedPreferences write error)
 - ❌ Business logic
 
 ### Domain Layer (Use Cases)
+
 - ✅ Single business operation
 - ✅ Coordinate repositories
 - ✅ Input validation (if needed)
@@ -165,12 +167,14 @@ Operation Fails (e.g., SharedPreferences write error)
 - ❌ UI concerns
 
 ### Domain Layer (Repositories - Interfaces)
+
 - ✅ Define data operations contract
 - ✅ Return Either<Failure, T>
 - ❌ Implementation details
 - ❌ Storage mechanism
 
 ### Data Layer (Repository Implementations)
+
 - ✅ Implement repository contracts
 - ✅ Error handling
 - ✅ Data transformation
@@ -179,6 +183,7 @@ Operation Fails (e.g., SharedPreferences write error)
 - ❌ State management
 
 ### Data Layer (Data Sources)
+
 - ✅ Direct storage operations
 - ✅ Data serialization
 - ✅ Validation
@@ -188,6 +193,7 @@ Operation Fails (e.g., SharedPreferences write error)
 - ❌ Error wrapping (returns exceptions)
 
 ### Storage Layer
+
 - ✅ Persist data
 - ✅ Auto-restore (HydratedBloc)
 - ❌ Business logic
