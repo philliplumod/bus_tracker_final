@@ -25,16 +25,15 @@ class RecentSearchesState {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'searches': searches.map((search) => search.toJson()).toList(),
-    };
+    return {'searches': searches.map((search) => search.toJson()).toList()};
   }
 
   factory RecentSearchesState.fromJson(Map<String, dynamic> json) {
     try {
       final searchesJson = json['searches'] as List?;
       return RecentSearchesState(
-        searches: searchesJson
+        searches:
+            searchesJson
                 ?.map((e) => RecentSearch.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             [],
@@ -49,7 +48,7 @@ class RecentSearchesCubit extends HydratedCubit<RecentSearchesState> {
   final RecentSearchesDataSource dataSource;
 
   RecentSearchesCubit({required this.dataSource})
-      : super(const RecentSearchesState()) {
+    : super(const RecentSearchesState()) {
     loadRecentSearches();
   }
 
@@ -59,10 +58,12 @@ class RecentSearchesCubit extends HydratedCubit<RecentSearchesState> {
       final searches = await dataSource.getRecentSearches();
       emit(state.copyWith(searches: searches, isLoading: false));
     } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: 'Failed to load recent searches: $e',
-      ));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          error: 'Failed to load recent searches: $e',
+        ),
+      );
     }
   }
 
@@ -78,9 +79,12 @@ class RecentSearchesCubit extends HydratedCubit<RecentSearchesState> {
   Future<void> removeSearch(String query) async {
     try {
       await dataSource.removeSearch(query);
-      final updatedSearches = state.searches
-          .where((search) => search.query.toLowerCase() != query.toLowerCase())
-          .toList();
+      final updatedSearches =
+          state.searches
+              .where(
+                (search) => search.query.toLowerCase() != query.toLowerCase(),
+              )
+              .toList();
       emit(state.copyWith(searches: updatedSearches, error: null));
     } catch (e) {
       emit(state.copyWith(error: 'Failed to remove search: $e'));

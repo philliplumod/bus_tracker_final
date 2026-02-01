@@ -7,6 +7,7 @@ This document details the comprehensive local persistence and state management i
 ## 🏗️ Architecture
 
 ### State Management Pattern
+
 - **HydratedBloc**: Used for automatic state persistence across app restarts
 - **Shared Preferences**: Used for custom caching and user preferences
 - **Clean Architecture**: Maintained with dedicated data sources for local storage
@@ -18,17 +19,20 @@ This document details the comprehensive local persistence and state management i
 **Implementation**: `AuthBloc` (HydratedBloc)
 
 **Features**:
+
 - ✅ Automatic login persistence
 - ✅ User profile cached locally
 - ✅ Survives app restarts
 - ✅ Secure state serialization
 
 **Files**:
+
 - `lib/presentation/bloc/auth/auth_bloc.dart` - Hydrated bloc with JSON serialization
 - `lib/presentation/bloc/auth/auth_state.dart` - State with toJson/fromJson methods
 - `lib/domain/entities/user.dart` - User entity with JSON support
 
 **Usage**:
+
 ```dart
 // Auth state automatically persists
 context.read<AuthBloc>().add(SignInRequested(...));
@@ -42,17 +46,20 @@ context.read<AuthBloc>().add(SignInRequested(...));
 **Implementation**: `BusSearchBloc` (HydratedBloc)
 
 **Features**:
+
 - ✅ Last search query persisted
 - ✅ Filtered bus results cached
 - ✅ All buses list cached
 - ✅ Search history maintained
 
 **Files**:
+
 - `lib/presentation/bloc/bus_search/bus_search_bloc.dart`
 - `lib/presentation/bloc/bus_search/bus_search_state.dart`
 - `lib/data/datasources/bus_local_data_source.dart` - Additional caching layer
 
 **Benefits**:
+
 - Users see last search results immediately on app open
 - Reduced API calls
 - Faster app startup
@@ -64,17 +71,20 @@ context.read<AuthBloc>().add(SignInRequested(...));
 **Implementation**: `TripSolutionBloc` (HydratedBloc)
 
 **Features**:
+
 - ✅ Last destination search saved
 - ✅ Matching buses cached
 - ✅ User location persisted
 - ✅ Destination coordinates saved
 
 **Files**:
+
 - `lib/presentation/bloc/trip_solution/trip_solution_bloc.dart`
 - `lib/presentation/bloc/trip_solution/trip_solution_state.dart`
 - `lib/domain/entities/user_location.dart` - Location entity with JSON support
 
 **Usage Example**:
+
 ```dart
 // Last search is restored on app restart
 context.read<TripSolutionBloc>().add(SearchTripSolution('SM Cebu'));
@@ -87,6 +97,7 @@ context.read<TripSolutionBloc>().add(SearchTripSolution('SM Cebu'));
 **Implementation**: `BusLocalDataSource` (SharedPreferences)
 
 **Features**:
+
 - ✅ 5-minute cache validity
 - ✅ Automatic cache expiration
 - ✅ Offline data access
@@ -95,6 +106,7 @@ context.read<TripSolutionBloc>().add(SearchTripSolution('SM Cebu'));
 **File**: `lib/data/datasources/bus_local_data_source.dart`
 
 **Key Methods**:
+
 ```dart
 Future<List<Bus>> getCachedBuses();
 Future<void> cacheBuses(List<Bus> buses);
@@ -103,6 +115,7 @@ Future<DateTime?> getLastUpdateTime();
 ```
 
 **Cache Strategy**:
+
 - Fresh data cached for 5 minutes
 - Stale cache automatically cleared
 - Fallback to empty list if cache invalid
@@ -114,17 +127,20 @@ Future<DateTime?> getLastUpdateTime();
 **Implementation**: `FavoritesCubit` (HydratedBloc) + `FavoritesLocalDataSource`
 
 **Features**:
+
 - ✅ Save favorite destinations
 - ✅ Quick access to frequent locations
 - ✅ Add/remove favorites
 - ✅ Persistent across sessions
 
 **Files**:
+
 - `lib/presentation/cubit/favorites_cubit.dart` - State management
 - `lib/data/datasources/favorites_local_data_source.dart` - Persistence layer
 - `lib/domain/entities/favorite_location.dart` - Entity model
 
 **Usage**:
+
 ```dart
 // Access favorites cubit
 final favoritesCubit = context.read<FavoritesCubit>();
@@ -157,16 +173,19 @@ final favorites = favoritesCubit.state.favorites;
 **Implementation**: `RecentSearchesCubit` (HydratedBloc) + `RecentSearchesDataSource`
 
 **Features**:
+
 - ✅ Track last 10 searches
 - ✅ Auto-deduplication
 - ✅ Sorted by recency
 - ✅ Clear individual or all searches
 
 **Files**:
+
 - `lib/presentation/cubit/recent_searches_cubit.dart` - State management
 - `lib/data/datasources/recent_searches_data_source.dart` - Persistence layer
 
 **Usage**:
+
 ```dart
 // Access recent searches cubit
 final recentSearchesCubit = context.read<RecentSearchesCubit>();
@@ -194,6 +213,7 @@ final searches = recentSearchesCubit.state.searches;
 **Implementation**: `AppPreferencesDataSource` (SharedPreferences)
 
 **Features**:
+
 - ✅ Notification preferences
 - ✅ Tracking enabled/disabled
 - ✅ Map type selection
@@ -202,6 +222,7 @@ final searches = recentSearchesCubit.state.searches;
 **File**: `lib/data/datasources/app_preferences_data_source.dart`
 
 **Available Preferences**:
+
 ```dart
 // Notifications
 bool notificationsEnabled = await prefs.getNotificationsEnabled();
@@ -227,6 +248,7 @@ await prefs.setShowTraffic(true);
 **Implementation**: `ThemeCubit` (HydratedBloc) - Already Implemented
 
 **Features**:
+
 - ✅ Light/Dark mode toggle
 - ✅ Persists across restarts
 - ✅ System theme support
@@ -242,6 +264,7 @@ await prefs.setShowTraffic(true);
 All entities now have `toJson()` and `fromJson()` methods:
 
 **Entities with JSON Support**:
+
 1. `Bus` - Bus information
 2. `User` - User profile with role
 3. `UserLocation` - GPS coordinates
@@ -261,6 +284,7 @@ HydratedBloc.storage = await HydratedStorage.build(
 ```
 
 All HydratedBlocs automatically:
+
 - Save state on changes
 - Restore state on app start
 - Handle serialization errors gracefully
@@ -327,12 +351,14 @@ context.read<BusSearchBloc>().add(SearchBusByNumber('123'));
 ## 💾 Storage Locations
 
 ### HydratedBloc Storage
+
 - **Path**: App Documents Directory
 - **Format**: JSON files
 - **Auto-managed**: Yes
 - **Size**: Minimal (~1-5MB total)
 
 ### SharedPreferences
+
 - **Platform**: Native storage
 - **Android**: XML files in SharedPreferences
 - **iOS**: NSUserDefaults
@@ -352,6 +378,7 @@ context.read<BusSearchBloc>().add(SearchBusByNumber('123'));
 ## 🎯 Benefits
 
 ### For Users
+
 - ✅ **Instant app startup** - Last viewed data loads immediately
 - ✅ **Offline access** - View cached buses without internet
 - ✅ **Seamless experience** - No re-login required
@@ -359,6 +386,7 @@ context.read<BusSearchBloc>().add(SearchBusByNumber('123'));
 - ✅ **Favorites** - One-tap access to frequent destinations
 
 ### For Developers
+
 - ✅ **Clean architecture** - Separation of concerns maintained
 - ✅ **Testable** - Data sources can be mocked
 - ✅ **Maintainable** - Clear state management pattern
@@ -381,6 +409,7 @@ try {
 ```
 
 This ensures:
+
 - App never crashes due to corrupted cache
 - Automatic fallback to fresh state
 - Silent recovery from storage errors
@@ -390,6 +419,7 @@ This ensures:
 ## 📝 Future Enhancements
 
 Potential additions:
+
 1. **Export/Import Settings** - Backup favorites & preferences
 2. **Cloud Sync** - Sync favorites across devices
 3. **Search Analytics** - Track most searched destinations
@@ -429,10 +459,12 @@ Potential additions:
 ## 📚 Related Files
 
 ### Core Files
+
 - `lib/main.dart` - HydratedBloc initialization
 - `lib/core/di/dependency_injection.dart` - All providers
 
 ### State Management
+
 - `lib/presentation/bloc/auth/*` - Auth persistence
 - `lib/presentation/bloc/bus_search/*` - Search persistence
 - `lib/presentation/bloc/trip_solution/*` - Trip persistence
@@ -440,12 +472,14 @@ Potential additions:
 - `lib/presentation/cubit/recent_searches_cubit.dart` - Recent searches
 
 ### Data Sources
+
 - `lib/data/datasources/bus_local_data_source.dart` - Bus caching
 - `lib/data/datasources/app_preferences_data_source.dart` - App settings
 - `lib/data/datasources/favorites_local_data_source.dart` - Favorites storage
 - `lib/data/datasources/recent_searches_data_source.dart` - Search history
 
 ### Entities
+
 - `lib/domain/entities/bus.dart` - Bus with JSON
 - `lib/domain/entities/user.dart` - User with JSON
 - `lib/domain/entities/user_location.dart` - Location with JSON
@@ -457,15 +491,15 @@ Potential additions:
 
 The Bus Tracker app now has comprehensive local persistence and state management:
 
-| Feature | Technology | Status |
-|---------|-----------|--------|
-| Authentication | HydratedBloc | ✅ Complete |
-| Bus Search | HydratedBloc | ✅ Complete |
-| Trip Solution | HydratedBloc | ✅ Complete |
-| Theme | HydratedBloc | ✅ Complete |
-| Favorites | HydratedBloc + SharedPreferences | ✅ Complete |
+| Feature         | Technology                       | Status      |
+| --------------- | -------------------------------- | ----------- |
+| Authentication  | HydratedBloc                     | ✅ Complete |
+| Bus Search      | HydratedBloc                     | ✅ Complete |
+| Trip Solution   | HydratedBloc                     | ✅ Complete |
+| Theme           | HydratedBloc                     | ✅ Complete |
+| Favorites       | HydratedBloc + SharedPreferences | ✅ Complete |
 | Recent Searches | HydratedBloc + SharedPreferences | ✅ Complete |
-| Bus Caching | SharedPreferences | ✅ Complete |
-| App Preferences | SharedPreferences | ✅ Complete |
+| Bus Caching     | SharedPreferences                | ✅ Complete |
+| App Preferences | SharedPreferences                | ✅ Complete |
 
 All features are production-ready and follow Flutter best practices! 🎉

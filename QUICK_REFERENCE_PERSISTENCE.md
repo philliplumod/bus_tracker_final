@@ -3,6 +3,7 @@
 ## 🚀 Quick Start
 
 ### Access Favorites
+
 ```dart
 // Get cubit
 final favoritesCubit = context.read<FavoritesCubit>();
@@ -29,6 +30,7 @@ await favoritesCubit.removeFavorite(favoriteId);
 ```
 
 ### Access Recent Searches
+
 ```dart
 // Get cubit
 final recentSearchesCubit = context.read<RecentSearchesCubit>();
@@ -50,13 +52,14 @@ await recentSearchesCubit.clearRecentSearches();
 ```
 
 ### Listen to State Changes
+
 ```dart
 // Favorites
 BlocBuilder<FavoritesCubit, FavoritesState>(
   builder: (context, state) {
     if (state.isLoading) return CircularProgressIndicator();
     if (state.error != null) return Text('Error: ${state.error}');
-    
+
     return ListView.builder(
       itemCount: state.favorites.length,
       itemBuilder: (context, index) {
@@ -98,6 +101,7 @@ BlocBuilder<RecentSearchesCubit, RecentSearchesState>(
 ```
 
 ### App Preferences (Direct Access)
+
 ```dart
 // Initialize in DI
 final prefs = await SharedPreferences.getInstance();
@@ -119,20 +123,21 @@ await appPrefs.setTrackingEnabled(true);
 
 ## 📦 All Available Features
 
-| Feature | Access | Auto-Persisted |
-|---------|--------|----------------|
-| Authentication | `context.read<AuthBloc>()` | ✅ |
-| Theme | `context.read<ThemeCubit>()` | ✅ |
-| Bus Search | `context.read<BusSearchBloc>()` | ✅ |
-| Trip Solution | `context.read<TripSolutionBloc>()` | ✅ |
-| Favorites | `context.read<FavoritesCubit>()` | ✅ |
-| Recent Searches | `context.read<RecentSearchesCubit>()` | ✅ |
-| App Preferences | Direct SharedPreferences | ✅ |
-| Bus Cache | `BusLocalDataSource` | ✅ (5 min TTL) |
+| Feature         | Access                                | Auto-Persisted |
+| --------------- | ------------------------------------- | -------------- |
+| Authentication  | `context.read<AuthBloc>()`            | ✅             |
+| Theme           | `context.read<ThemeCubit>()`          | ✅             |
+| Bus Search      | `context.read<BusSearchBloc>()`       | ✅             |
+| Trip Solution   | `context.read<TripSolutionBloc>()`    | ✅             |
+| Favorites       | `context.read<FavoritesCubit>()`      | ✅             |
+| Recent Searches | `context.read<RecentSearchesCubit>()` | ✅             |
+| App Preferences | Direct SharedPreferences              | ✅             |
+| Bus Cache       | `BusLocalDataSource`                  | ✅ (5 min TTL) |
 
 ## 🎯 Common Use Cases
 
 ### 1. Show Recent Searches in Search UI
+
 ```dart
 Widget buildSearchSuggestions() {
   return BlocBuilder<RecentSearchesCubit, RecentSearchesState>(
@@ -140,7 +145,7 @@ Widget buildSearchSuggestions() {
       if (state.searches.isEmpty) {
         return Text('No recent searches');
       }
-      
+
       return Column(
         children: [
           Text('Recent Searches', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -162,13 +167,14 @@ Widget buildSearchSuggestions() {
 ```
 
 ### 2. Add to Favorites Button
+
 ```dart
 IconButton buildFavoriteButton(String locationName, LatLng coords) {
   return BlocBuilder<FavoritesCubit, FavoritesState>(
     builder: (context, state) {
       final cubit = context.read<FavoritesCubit>();
       final isFav = cubit.isFavorite(locationName);
-      
+
       return IconButton(
         icon: Icon(isFav ? Icons.favorite : Icons.favorite_border),
         color: isFav ? Colors.red : null,
@@ -199,6 +205,7 @@ IconButton buildFavoriteButton(String locationName, LatLng coords) {
 ```
 
 ### 3. Favorites List Page
+
 ```dart
 class FavoritesPage extends StatelessWidget {
   @override
@@ -220,7 +227,7 @@ class FavoritesPage extends StatelessWidget {
           if (state.isLoading) {
             return Center(child: CircularProgressIndicator());
           }
-          
+
           if (state.favorites.isEmpty) {
             return Center(
               child: Column(
@@ -233,7 +240,7 @@ class FavoritesPage extends StatelessWidget {
               ),
             );
           }
-          
+
           return ListView.builder(
             itemCount: state.favorites.length,
             itemBuilder: (context, index) {
@@ -266,17 +273,19 @@ class FavoritesPage extends StatelessWidget {
 ```
 
 ### 4. Save Search Query
+
 ```dart
 void performSearch(BuildContext context, String query) {
   // Save to recent searches
   context.read<RecentSearchesCubit>().addSearch(query);
-  
+
   // Perform actual search
   context.read<TripSolutionBloc>().add(SearchTripSolution(query));
 }
 ```
 
 ### 5. Settings Page with Preferences
+
 ```dart
 class SettingsPage extends StatelessWidget {
   @override
@@ -297,7 +306,7 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
-          
+
           // Clear Recent Searches
           ListTile(
             leading: Icon(Icons.history),
@@ -309,7 +318,7 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
-          
+
           // Clear Favorites
           ListTile(
             leading: Icon(Icons.favorite),
@@ -331,6 +340,7 @@ class SettingsPage extends StatelessWidget {
 ## 🔄 Automatic Behaviors
 
 ### What Persists Automatically:
+
 - ✅ User authentication state
 - ✅ Theme preference (light/dark)
 - ✅ Last bus search query and results
@@ -340,6 +350,7 @@ class SettingsPage extends StatelessWidget {
 - ✅ App preferences (notifications, map type, etc.)
 
 ### What Gets Refreshed:
+
 - 🔄 Bus locations (cached for 5 minutes)
 - 🔄 User GPS location (fetched on demand)
 - 🔄 Real-time bus updates (via Firebase stream)
@@ -355,12 +366,13 @@ class SettingsPage extends StatelessWidget {
 ## 🐛 Debugging
 
 ### Clear All Cached Data (for testing):
+
 ```dart
 // In your test or debug menu
 Future<void> clearAllCache() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.clear();
-  
+
   context.read<FavoritesCubit>().clearFavorites();
   context.read<RecentSearchesCubit>().clearRecentSearches();
   context.read<AuthBloc>().add(SignOutRequested());
@@ -368,6 +380,7 @@ Future<void> clearAllCache() async {
 ```
 
 ### Check if Data is Persisting:
+
 ```dart
 // Add logging to observe persistence
 class DebugFavoritesCubit extends FavoritesCubit {
@@ -381,11 +394,11 @@ class DebugFavoritesCubit extends FavoritesCubit {
 
 ## 📱 Platform Differences
 
-| Platform | Storage Location | Notes |
-|----------|------------------|-------|
-| Android | `/data/data/[package]/shared_prefs/` | XML files |
-| iOS | `NSUserDefaults` | Binary plist |
-| Windows | Registry or app folder | Platform-specific |
-| Web | LocalStorage | JSON strings |
+| Platform | Storage Location                     | Notes             |
+| -------- | ------------------------------------ | ----------------- |
+| Android  | `/data/data/[package]/shared_prefs/` | XML files         |
+| iOS      | `NSUserDefaults`                     | Binary plist      |
+| Windows  | Registry or app folder               | Platform-specific |
+| Web      | LocalStorage                         | JSON strings      |
 
 All handled automatically by shared_preferences and HydratedBloc! 🎉

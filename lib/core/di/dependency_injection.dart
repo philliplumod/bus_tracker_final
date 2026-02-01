@@ -35,7 +35,7 @@ class DependencyInjection {
   // Data Sources - Remote
   static late final AuthRemoteDataSource authRemoteDataSource;
   static late final BusRemoteDataSource busRemoteDataSource;
-  
+
   // Data Sources - Local
   static late final LocationLocalDataSource locationLocalDataSource;
   static late final BusLocalDataSource busLocalDataSource;
@@ -69,7 +69,7 @@ class DependencyInjection {
     busRemoteDataSource = BusRemoteDataSourceImpl(
       busRef: FirebaseDatabase.instance.ref(),
     );
-    
+
     // Initialize local data sources
     locationLocalDataSource = LocationLocalDataSourceImpl();
     busLocalDataSource = BusLocalDataSourceImpl(prefs: prefs);
