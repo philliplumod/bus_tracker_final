@@ -12,9 +12,13 @@ import '../../data/datasources/recent_searches_data_source.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../data/repositories/bus_repository_impl.dart';
 import '../../data/repositories/location_repository_impl.dart';
+import '../../data/repositories/favorites_repository_impl.dart';
+import '../../data/repositories/recent_searches_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/bus_repository.dart';
 import '../../domain/repositories/location_repository.dart';
+import '../../domain/repositories/favorites_repository.dart';
+import '../../domain/repositories/recent_searches_repository.dart';
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/get_nearby_buses.dart';
 import '../../domain/usecases/get_user_location.dart';
@@ -22,6 +26,13 @@ import '../../domain/usecases/sign_in.dart';
 import '../../domain/usecases/sign_out.dart';
 import '../../domain/usecases/sign_up.dart';
 import '../../domain/usecases/watch_bus_updates.dart';
+import '../../domain/usecases/get_favorites.dart';
+import '../../domain/usecases/add_favorite.dart';
+import '../../domain/usecases/remove_favorite.dart';
+import '../../domain/usecases/is_favorite.dart';
+import '../../domain/usecases/get_recent_searches.dart';
+import '../../domain/usecases/add_recent_search.dart';
+import '../../domain/usecases/remove_recent_search.dart';
 import '../../presentation/bloc/auth/auth_bloc.dart';
 import '../../presentation/bloc/auth/auth_event.dart';
 import '../../presentation/bloc/map/map_bloc.dart';
@@ -47,6 +58,8 @@ class DependencyInjection {
   static late final AuthRepository authRepository;
   static late final BusRepository busRepository;
   static late final LocationRepository locationRepository;
+  static late final FavoritesRepository favoritesRepository;
+  static late final RecentSearchesRepository recentSearchesRepository;
 
   // Use Cases
   static late final SignIn signIn;
@@ -56,6 +69,13 @@ class DependencyInjection {
   static late final GetUserLocation getUserLocation;
   static late final GetNearbyBuses getNearbyBuses;
   static late final WatchBusUpdates watchBusUpdates;
+  static late final GetFavorites getFavorites;
+  static late final AddFavorite addFavorite;
+  static late final RemoveFavorite removeFavorite;
+  static late final IsFavorite isFavorite;
+  static late final GetRecentSearches getRecentSearches;
+  static late final AddRecentSearch addRecentSearch;
+  static late final RemoveRecentSearch removeRecentSearch;
 
   static Future<void> init() async {
     // Initialize SharedPreferences
@@ -83,6 +103,12 @@ class DependencyInjection {
     locationRepository = LocationRepositoryImpl(
       localDataSource: locationLocalDataSource,
     );
+    favoritesRepository = FavoritesRepositoryImpl(
+      localDataSource: favoritesLocalDataSource,
+    );
+    recentSearchesRepository = RecentSearchesRepositoryImpl(
+      dataSource: recentSearchesDataSource,
+    );
 
     // Initialize use cases
     signIn = SignIn(authRepository);
@@ -92,6 +118,13 @@ class DependencyInjection {
     getUserLocation = GetUserLocation(locationRepository);
     getNearbyBuses = GetNearbyBuses(busRepository);
     watchBusUpdates = WatchBusUpdates(busRepository);
+    getFavorites = GetFavorites(favoritesRepository);
+    addFavorite = AddFavorite(favoritesRepository);
+    removeFavorite = RemoveFavorite(favoritesRepository);
+    isFavorite = IsFavorite(favoritesRepository);
+    getRecentSearches = GetRecentSearches(recentSearchesRepository);
+    addRecentSearch = AddRecentSearch(recentSearchesRepository);
+    removeRecentSearch = RemoveRecentSearch(recentSearchesRepository);
   }
 
   static List<BlocProvider> get providers => [
@@ -124,10 +157,21 @@ class DependencyInjection {
           ),
     ),
     BlocProvider<FavoritesCubit>(
-      create: (_) => FavoritesCubit(dataSource: favoritesLocalDataSource),
+      create:
+          (_) => FavoritesCubit(
+            getFavoritesUseCase: getFavorites,
+            addFavoriteUseCase: addFavorite,
+            removeFavoriteUseCase: removeFavorite,
+            isFavoriteUseCase: isFavorite,
+          ),
     ),
     BlocProvider<RecentSearchesCubit>(
-      create: (_) => RecentSearchesCubit(dataSource: recentSearchesDataSource),
+      create:
+          (_) => RecentSearchesCubit(
+            getRecentSearchesUseCase: getRecentSearches,
+            addRecentSearchUseCase: addRecentSearch,
+            removeRecentSearchUseCase: removeRecentSearch,
+          ),
     ),
   ];
 }

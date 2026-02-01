@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RecentSearch {
@@ -45,7 +46,7 @@ class RecentSearchesDataSourceImpl implements RecentSearchesDataSource {
   Future<List<RecentSearch>> getRecentSearches() async {
     try {
       final jsonString = prefs.getString(_recentSearchesKey);
-      if (jsonString == null) return [];
+      if (jsonString == null || jsonString.isEmpty) return [];
 
       final List<dynamic> jsonList = json.decode(jsonString);
       final searches =
@@ -58,8 +59,11 @@ class RecentSearchesDataSourceImpl implements RecentSearchesDataSource {
       // Sort by most recent first
       searches.sort((a, b) => b.searchedAt.compareTo(a.searchedAt));
 
+      debugPrint('Successfully loaded ${searches.length} recent searches');
       return searches;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Error getting recent searches: $e');
+      debugPrint('StackTrace: $stackTrace');
       return [];
     }
   }
@@ -67,19 +71,23 @@ class RecentSearchesDataSourceImpl implements RecentSearchesDataSource {
   @override
   Future<void> addSearch(String query) async {
     try {
-      if (query.trim().isEmpty) return;
+      if (query.trim().isEmpty) {
+        debugPrint('Cannot add empty search query');
+        return;
+      }
 
+      final trimmedQuery = query.trim();
       final searches = await getRecentSearches();
 
-      // Remove existing entry if present
+      // Remove existing entry if present (case-insensitive)
       searches.removeWhere(
-        (search) => search.query.toLowerCase() == query.toLowerCase(),
+        (search) => search.query.toLowerCase() == trimmedQuery.toLowerCase(),
       );
 
       // Add new search at the beginning
       searches.insert(
         0,
-        RecentSearch(query: query, searchedAt: DateTime.now()),
+        RecentSearch(query: trimmedQuery, searchedAt: DateTime.now()),
       );
 
       // Keep only the most recent searches
@@ -89,9 +97,17 @@ class RecentSearchesDataSourceImpl implements RecentSearchesDataSource {
 
       final jsonList = searches.map((search) => search.toJson()).toList();
       final jsonString = json.encode(jsonList);
-      await prefs.setString(_recentSearchesKey, jsonString);
-    } catch (e) {
-      // Silently fail
+      final success = await prefs.setString(_recentSearchesKey, jsonString);
+
+      if (success) {
+        debugPrint('Successfully added recent search: $trimmedQuery');
+      } else {
+        throw Exception('Failed to save recent search');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error adding search: $e');
+      debugPrint('StackTrace: $stackTrace');
+      rethrow;
     }
   }
 
@@ -99,20 +115,42 @@ class RecentSearchesDataSourceImpl implements RecentSearchesDataSource {
   Future<void> removeSearch(String query) async {
     try {
       final searches = await getRecentSearches();
+      final initialCount = searches.length;
       searches.removeWhere(
         (search) => search.query.toLowerCase() == query.toLowerCase(),
       );
 
-      final jsonList = searches.map((search) => search.toJson()).toList();
-      final jsonString = json.encode(jsonList);
-      await prefs.setString(_recentSearchesKey, jsonString);
-    } catch (e) {
-      // Silently fail
+      if (searches.length < initialCount) {
+        final jsonList = searches.map((search) => search.toJson()).toList();
+        final jsonString = json.encode(jsonList);
+        final success = await prefs.setString(_recentSearchesKey, jsonString);
+
+        if (success) {
+          debugPrint('Successfully removed recent search: $query');
+        } else {
+          throw Exception('Failed to save searches after removal');
+        }
+      } else {
+        debugPrint('Search query not found: $query');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error removing search: $e');
+      debugPrint('StackTrace: $stackTrace');
+      rethrow;
     }
   }
 
   @override
   Future<void> clearRecentSearches() async {
-    await prefs.remove(_recentSearchesKey);
+    try {
+      final success = await prefs.remove(_recentSearchesKey);
+      if (success) {
+        debugPrint('Successfully cleared all recent searches');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error clearing recent searches: $e');
+      debugPrint('StackTrace: $stackTrace');
+      rethrow;
+    }
   }
 }
