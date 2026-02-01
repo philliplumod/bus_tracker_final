@@ -50,4 +50,20 @@ class DistanceCalculator {
       return '${etaHours.toStringAsFixed(1)} hr';
     }
   }
+
+  /// Calculate estimated travel time based on distance
+  /// Assumes average bus speed of 40 km/h
+  static String calculateTravelTime(double distanceInKm) {
+    const double averageBusSpeed = 40.0; // km/h
+    return calculateETA(distanceInKm, averageBusSpeed);
+  }
+
+  /// Get travel time in minutes
+  static double getTravelTimeMinutes(double distanceInKm) {
+    const double averageBusSpeed = 40.0; // km/h
+    if (averageBusSpeed <= 0) return 0;
+
+    final hours = distanceInKm / averageBusSpeed;
+    return hours * 60;
+  }
 }

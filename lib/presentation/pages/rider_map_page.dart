@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../domain/entities/user.dart';
-import '../bloc/auth/auth_bloc.dart';
-import '../bloc/auth/auth_event.dart';
 import '../bloc/map/map_bloc.dart';
 import '../bloc/map/map_event.dart';
 import '../bloc/map/map_state.dart';
@@ -42,30 +40,6 @@ class _RiderMapPageState extends State<RiderMapPage> {
     _mapController = controller;
   }
 
-  void _handleSignOut() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Sign Out'),
-            content: const Text('Are you sure you want to sign out?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.read<AuthBloc>().add(SignOutRequested());
-                },
-                child: const Text('Sign Out'),
-              ),
-            ],
-          ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,18 +47,12 @@ class _RiderMapPageState extends State<RiderMapPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Rider Dashboard'),
+            const Text('Live Tracking'),
             if (widget.rider.busName != null)
               Text(widget.rider.busName!, style: const TextStyle(fontSize: 12)),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _handleSignOut,
-            tooltip: 'Sign Out',
-          ),
-        ],
+        automaticallyImplyLeading: false,
       ),
       body: BlocConsumer<MapBloc, MapState>(
         listener: (context, state) {
@@ -155,7 +123,10 @@ class _RiderMapPageState extends State<RiderMapPage> {
               if (widget.rider.assignedRoute != null)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Theme.of(context).primaryColor.withOpacity(0.1),
                     border: Border(
@@ -164,30 +135,26 @@ class _RiderMapPageState extends State<RiderMapPage> {
                       ),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.route,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Assigned Route',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                      Icon(
+                        Icons.route,
+                        color: Theme.of(context).primaryColor,
+                        size: 18,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Route:',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
                       Text(
                         widget.rider.assignedRoute!,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -229,48 +196,43 @@ class _RiderMapPageState extends State<RiderMapPage> {
               // Location Information Card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF1E1E1E)
+                          : Colors.white,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
+                      blurRadius: 8,
                       offset: const Offset(0, -2),
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          color: Theme.of(context).primaryColor,
+                    Icon(
+                      Icons.location_on,
+                      color: Theme.of(context).primaryColor,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${state.userLocation.latitude.toStringAsFixed(4)}, ${state.userLocation.longitude.toStringAsFixed(4)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Current Location',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Lat: ${state.userLocation.latitude.toStringAsFixed(6)}',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      ),
                     ),
                     Text(
-                      'Lng: ${state.userLocation.longitude.toStringAsFixed(6)}',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                    ),
-                    Text(
-                      'Accuracy: ${state.userLocation.accuracy.toStringAsFixed(2)}m',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      '±${state.userLocation.accuracy.toStringAsFixed(0)}m',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                     ),
                   ],
                 ),

@@ -34,28 +34,31 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Enter Bus Number')),
+      appBar: AppBar(
+        title: const Text('Bus Search'),
+        automaticallyImplyLeading: false,
+      ),
       body: BlocBuilder<BusSearchBloc, BusSearchState>(
         builder: (context, state) {
           return Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(12.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Text(
                           'Search for a Bus',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         TextField(
                           controller: _busNumberController,
                           decoration: InputDecoration(
@@ -188,15 +191,23 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
       itemBuilder: (context, index) {
         final bus = state.filteredBuses[index];
         return Card(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: const EdgeInsets.only(bottom: 6),
           child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
             leading: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Theme.of(context).primaryColor,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.directions_bus, color: Colors.white),
+              child: const Icon(
+                Icons.directions_bus,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
             title: Text(
               bus.busNumber != null ? 'Bus ${bus.busNumber}' : 'Bus ${bus.id}',

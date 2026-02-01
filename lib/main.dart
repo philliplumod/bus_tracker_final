@@ -10,12 +10,12 @@ import 'domain/entities/user.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
 import 'presentation/bloc/auth/auth_state.dart';
 import 'presentation/pages/login_page.dart';
-import 'presentation/pages/rider_map_page.dart';
+import 'presentation/pages/rider_navigation_wrapper.dart';
+import 'presentation/pages/passenger_navigation_wrapper.dart';
 import 'service/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_cubit.dart';
 import 'theme/theme_state.dart';
-import 'presentation/pages/main_menu_page.dart';
 import 'firebase_options.dart';
 
 Future<void> requestNotificationPermission() async {
@@ -130,12 +130,18 @@ class MyApp extends StatelessWidget {
 
                   switch (user.role) {
                     case UserRole.rider:
-                      return SafeArea(child: RiderMapPage(rider: user));
+                      return SafeArea(
+                        child: RiderNavigationWrapper(rider: user),
+                      );
                     case UserRole.passenger:
-                      return const SafeArea(child: MainMenuPage());
+                      return const SafeArea(
+                        child: PassengerNavigationWrapper(),
+                      );
                     case UserRole.admin:
                       // TODO: Create admin page
-                      return const SafeArea(child: MainMenuPage());
+                      return const SafeArea(
+                        child: PassengerNavigationWrapper(),
+                      );
                   }
                 }
 
