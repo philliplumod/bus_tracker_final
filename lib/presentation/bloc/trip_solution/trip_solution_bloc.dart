@@ -1,12 +1,15 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/utils/distance_calculator.dart';
+import '../../../domain/entities/bus.dart';
+import '../../../domain/entities/user_location.dart';
 import '../../../domain/usecases/get_nearby_buses.dart';
 import '../../../domain/usecases/get_user_location.dart';
 import 'trip_solution_event.dart';
 import 'trip_solution_state.dart';
 
-class TripSolutionBloc extends Bloc<TripSolutionEvent, TripSolutionState> {
+class TripSolutionBloc
+    extends HydratedBloc<TripSolutionEvent, TripSolutionState> {
   final GetUserLocation getUserLocation;
   final GetNearbyBuses getNearbyBuses;
 
@@ -31,6 +34,68 @@ class TripSolutionBloc extends Bloc<TripSolutionEvent, TripSolutionState> {
     on<LoadTripSolutionData>(_onLoadTripSolutionData);
     on<SearchTripSolution>(_onSearchTripSolution);
     on<ClearTripSolution>(_onClearTripSolution);
+  }
+
+  @override
+  TripSolutionState? fromJson(Map<String, dynamic> json) {
+    try {
+      final type = json['type'] as String?;
+      switch (type) {
+        case 'loaded':
+          final userLocationJson =
+              json['userLocation'] as Map<String, dynamic>?;
+          final allBusesJson = json['allBuses'] as List?;
+          final matchingBusesJson = json['matchingBuses'] as List?;
+
+          if (userLocationJson != null &&
+              allBusesJson != null &&
+              matchingBusesJson != null) {
+            final destCoords =
+                json['destinationCoordinates'] as Map<String, dynamic>?;
+            return TripSolutionLoaded(
+              userLocation: UserLocation.fromJson(userLocationJson),
+              allBuses:
+                  allBusesJson
+                      .map((e) => Bus.fromJson(e as Map<String, dynamic>))
+                      .toList(),
+              matchingBuses:
+                  matchingBusesJson
+                      .map((e) => Bus.fromJson(e as Map<String, dynamic>))
+                      .toList(),
+              searchQuery: json['searchQuery'] as String? ?? '',
+              destinationCoordinates:
+                  destCoords != null
+                      ? LatLng(
+                        (destCoords['latitude'] as num).toDouble(),
+                        (destCoords['longitude'] as num).toDouble(),
+                      )
+                      : null,
+              hasSearched: json['hasSearched'] as bool? ?? false,
+            );
+          }
+          return null;
+        case 'loading':
+          return TripSolutionLoading();
+        case 'error':
+          return TripSolutionError(
+            json['message'] as String? ?? 'Unknown error',
+          );
+        case 'initial':
+        default:
+          return TripSolutionInitial();
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  @override
+  Map<String, dynamic>? toJson(TripSolutionState state) {
+    try {
+      return state.toJson();
+    } catch (e) {
+      return null;
+    }
   }
 
   Map<String, LatLng> get knownLocations => _knownLocations;

@@ -4,11 +4,19 @@ import '../../../domain/entities/bus.dart';
 abstract class BusSearchState extends Equatable {
   @override
   List<Object?> get props => [];
+
+  Map<String, dynamic> toJson();
 }
 
-class BusSearchInitial extends BusSearchState {}
+class BusSearchInitial extends BusSearchState {
+  @override
+  Map<String, dynamic> toJson() => {'type': 'initial'};
+}
 
-class BusSearchLoading extends BusSearchState {}
+class BusSearchLoading extends BusSearchState {
+  @override
+  Map<String, dynamic> toJson() => {'type': 'loading'};
+}
 
 class BusSearchLoaded extends BusSearchState {
   final List<Bus> allBuses;
@@ -30,6 +38,17 @@ class BusSearchLoaded extends BusSearchState {
     searchQuery,
     hasSearched,
   ];
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'type': 'loaded',
+      'allBuses': allBuses.map((bus) => bus.toJson()).toList(),
+      'filteredBuses': filteredBuses.map((bus) => bus.toJson()).toList(),
+      'searchQuery': searchQuery,
+      'hasSearched': hasSearched,
+    };
+  }
 
   BusSearchLoaded copyWith({
     List<Bus>? allBuses,
@@ -53,4 +72,9 @@ class BusSearchError extends BusSearchState {
 
   @override
   List<Object?> get props => [message];
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {'type': 'error', 'message': message};
+  }
 }

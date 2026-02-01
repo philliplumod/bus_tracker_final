@@ -1,4 +1,5 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
+import '../../../domain/entities/user.dart';
 import '../../../domain/usecases/get_current_user.dart';
 import '../../../domain/usecases/sign_in.dart';
 import '../../../domain/usecases/sign_out.dart';
@@ -6,7 +7,7 @@ import '../../../domain/usecases/sign_up.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
-class AuthBloc extends Bloc<AuthEvent, AuthState> {
+class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
   final SignIn signIn;
   final SignUp signUp;
   final SignOut signOut;
@@ -22,6 +23,41 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<SignInRequested>(_onSignInRequested);
     on<SignUpRequested>(_onSignUpRequested);
     on<SignOutRequested>(_onSignOutRequested);
+  }
+
+  @override
+  AuthState? fromJson(Map<String, dynamic> json) {
+    try {
+      final type = json['type'] as String?;
+      switch (type) {
+        case 'authenticated':
+          final userData = json['user'] as Map<String, dynamic>?;
+          if (userData != null) {
+            return AuthAuthenticated(User.fromJson(userData));
+          }
+          return null;
+        case 'unauthenticated':
+          return AuthUnauthenticated();
+        case 'loading':
+          return AuthLoading();
+        case 'error':
+          return AuthError(json['message'] as String? ?? 'Unknown error');
+        case 'initial':
+        default:
+          return AuthInitial();
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  @override
+  Map<String, dynamic>? toJson(AuthState state) {
+    try {
+      return state.toJson();
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<void> _onCheckAuthStatus(

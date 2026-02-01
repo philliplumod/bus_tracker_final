@@ -27,13 +27,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   // For Android Emulator, use: http://10.0.2.2:3000/api
   // For iOS Simulator, use: http://localhost:3000/api
-  // For physical device, use your computer's IP: http://192.168.x.x:3000/api
+  // For physical device via USB/ADB, use: http://localhost:3000/api (after: adb reverse tcp:3000 tcp:3000)
+  // For physical device via Wi-Fi, use your computer's IP: http://192.168.x.x:3000/api
   // For production, use: https://your-production-domain.com/api
   //
-  // ⚠️ IMPORTANT: Make sure your backend server is running before using the app!
-  // Android Emulator: 10.0.2.2 is a special alias to your host machine's localhost
-  // Physical Device: Use your computer's actual IP address on the network
-  static const String baseUrl = 'http://192.168.18.10:3000/api';
+  // ⚠️ CURRENT: Using localhost with ADB port forwarding (scrcpy/USB connection)
+  static const String baseUrl = 'http://localhost:3000/api';
   final http.Client client;
   final SharedPreferences prefs;
 

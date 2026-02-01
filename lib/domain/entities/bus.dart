@@ -27,6 +27,41 @@ class Bus extends Equatable {
     this.direction,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'busNumber': busNumber,
+      'route': route,
+      'latitude': latitude,
+      'longitude': longitude,
+      'altitude': altitude,
+      'speed': speed,
+      'timestamp': timestamp,
+      'distanceFromUser': distanceFromUser,
+      'eta': eta,
+      'direction': direction,
+    };
+  }
+
+  factory Bus.fromJson(Map<String, dynamic> json) {
+    return Bus(
+      id: json['id'] as String,
+      busNumber: json['busNumber'] as String?,
+      route: json['route'] as String?,
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      altitude: (json['altitude'] as num).toDouble(),
+      speed: (json['speed'] as num).toDouble(),
+      timestamp: json['timestamp'] as String,
+      distanceFromUser:
+          json['distanceFromUser'] != null
+              ? (json['distanceFromUser'] as num).toDouble()
+              : null,
+      eta: json['eta'] as String?,
+      direction: json['direction'] as String?,
+    );
+  }
+
   Bus copyWith({
     String? id,
     String? busNumber,

@@ -6,11 +6,19 @@ import '../../../domain/entities/user_location.dart';
 abstract class TripSolutionState extends Equatable {
   @override
   List<Object?> get props => [];
+
+  Map<String, dynamic> toJson();
 }
 
-class TripSolutionInitial extends TripSolutionState {}
+class TripSolutionInitial extends TripSolutionState {
+  @override
+  Map<String, dynamic> toJson() => {'type': 'initial'};
+}
 
-class TripSolutionLoading extends TripSolutionState {}
+class TripSolutionLoading extends TripSolutionState {
+  @override
+  Map<String, dynamic> toJson() => {'type': 'loading'};
+}
 
 class TripSolutionLoaded extends TripSolutionState {
   final UserLocation userLocation;
@@ -38,6 +46,25 @@ class TripSolutionLoaded extends TripSolutionState {
     destinationCoordinates,
     hasSearched,
   ];
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'type': 'loaded',
+      'userLocation': userLocation.toJson(),
+      'allBuses': allBuses.map((bus) => bus.toJson()).toList(),
+      'matchingBuses': matchingBuses.map((bus) => bus.toJson()).toList(),
+      'searchQuery': searchQuery,
+      'destinationCoordinates':
+          destinationCoordinates != null
+              ? {
+                'latitude': destinationCoordinates!.latitude,
+                'longitude': destinationCoordinates!.longitude,
+              }
+              : null,
+      'hasSearched': hasSearched,
+    };
+  }
 
   TripSolutionLoaded copyWith({
     UserLocation? userLocation,
@@ -69,4 +96,9 @@ class TripSolutionError extends TripSolutionState {
 
   @override
   List<Object?> get props => [message];
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {'type': 'error', 'message': message};
+  }
 }
