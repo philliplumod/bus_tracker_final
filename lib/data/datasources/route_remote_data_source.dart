@@ -36,7 +36,7 @@ class RouteRemoteDataSourceImpl implements RouteRemoteDataSource {
       data.forEach((key, value) {
         if (value is Map) {
           try {
-            final terminalData = Map<String, dynamic>.from(value as Map);
+            final terminalData = Map<String, dynamic>.from(value);
             terminalData['terminal_id'] = key.toString();
             terminals.add(Terminal.fromJson(terminalData));
           } catch (e) {
@@ -87,7 +87,7 @@ class RouteRemoteDataSourceImpl implements RouteRemoteDataSource {
       data.forEach((key, value) async {
         if (value is Map) {
           try {
-            final routeData = Map<String, dynamic>.from(value as Map);
+            final routeData = Map<String, dynamic>.from(value);
             routeData['route_id'] = key.toString();
 
             final startingTerminalId =
@@ -208,7 +208,7 @@ class RouteRemoteDataSourceImpl implements RouteRemoteDataSource {
       data.forEach((key, value) {
         if (value is Map) {
           try {
-            final assignmentData = Map<String, dynamic>.from(value as Map);
+            final assignmentData = Map<String, dynamic>.from(value);
             assignmentData['bus_route_id'] = key.toString();
             assignments.add(BusRouteAssignment.fromJson(assignmentData));
           } catch (e) {
@@ -273,7 +273,7 @@ class RouteRemoteDataSourceImpl implements RouteRemoteDataSource {
       data.forEach((key, value) {
         if (value is Map) {
           try {
-            final routeData = Map<String, dynamic>.from(value as Map);
+            final routeData = Map<String, dynamic>.from(value);
             routeData['route_id'] = key.toString();
 
             final startingTerminalId =

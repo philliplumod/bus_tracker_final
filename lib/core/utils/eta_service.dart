@@ -1,6 +1,6 @@
 import 'dart:math';
-import '../entities/terminal.dart';
-import '../entities/route.dart';
+import '../../domain/entities/terminal.dart';
+import '../../domain/entities/route.dart';
 
 class ETAService {
   /// Calculate estimated time of arrival to a terminal in minutes

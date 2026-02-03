@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../domain/entities/route.dart';
 import '../../domain/entities/bus.dart';
-import '../../domain/entities/terminal.dart';
 import '../../domain/usecases/get_all_routes.dart';
 import '../../domain/usecases/get_nearby_buses.dart';
-import '../../core/utils/eta_service.dart';
 
 class RouteExplorerPage extends StatefulWidget {
   final GetAllRoutes getAllRoutes;

@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/entities/route.dart';
-import '../../domain/entities/terminal.dart';
 import '../../core/utils/eta_service.dart';
 import '../../domain/usecases/get_user_assigned_route.dart';
 import '../bloc/auth/auth_bloc.dart';
@@ -73,16 +72,14 @@ class _EnhancedRiderMapPageState extends State<EnhancedRiderMapPage> {
   void _updateETAAndProgress(
     double currentLat,
     double currentLng,
-    double? currentSpeed,
   ) {
     if (_assignedRoute == null) return;
 
-    // Calculate ETA to destination terminal
+    // Calculate ETA to destination terminal (currentSpeed not available)
     final eta = ETAService.calculateETAToTerminal(
       currentLat: currentLat,
       currentLng: currentLng,
       terminal: _assignedRoute!.destinationTerminal,
-      currentSpeed: currentSpeed,
       route: _assignedRoute,
     );
 
@@ -248,7 +245,6 @@ class _EnhancedRiderMapPageState extends State<EnhancedRiderMapPage> {
             _updateETAAndProgress(
               state.userLocation.latitude,
               state.userLocation.longitude,
-              state.userLocation.speed,
             );
 
             if (_mapController != null) {
@@ -571,28 +567,12 @@ class _EnhancedRiderMapPageState extends State<EnhancedRiderMapPage> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if (state.userLocation.speed != null)
-                          Expanded(
-                            child: Text(
-                              'Speed: ${(state.userLocation.speed! * 3.6).toStringAsFixed(1)} km/h',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ),
-                        Expanded(
-                          child: Text(
-                            'Accuracy: ±${state.userLocation.accuracy.toStringAsFixed(1)}m',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Accuracy: ±${state.userLocation.accuracy.toStringAsFixed(1)}m',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[700],
+                      ),
                     ),
                   ],
                 ),
