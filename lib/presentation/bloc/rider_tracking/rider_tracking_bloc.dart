@@ -28,6 +28,7 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
     required this.routeRepository,
     required this.apiClient,
   }) : super(RiderTrackingInitial()) {
+    debugPrint('🏗️ RiderTrackingBloc created - Initial state set');
     on<StartTracking>(_onStartTracking);
     on<StopTracking>(_onStopTracking);
     on<LocationUpdateReceived>(_onLocationUpdateReceived);
@@ -37,7 +38,16 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
     StartTracking event,
     Emitter<RiderTrackingState> emit,
   ) async {
+    debugPrint('📨 StartTracking event RECEIVED in BLoC');
+    debugPrint('   Event rider: ${event.rider.name}');
+    debugPrint('   Current state before processing: ${state.runtimeType}');
+
     try {
+      // Emit loading state immediately
+      debugPrint('🔄 Emitting RiderTrackingLoading state...');
+      emit(RiderTrackingLoading());
+      debugPrint('✅ RiderTrackingLoading state emitted');
+
       debugPrint('═══════════════════════════════════════');
       debugPrint('🚀 Starting rider tracking for: ${event.rider.name}');
       debugPrint('   User ID: "${event.rider.id}"');

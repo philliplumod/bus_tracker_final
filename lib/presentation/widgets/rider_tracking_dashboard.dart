@@ -20,6 +20,8 @@ class RiderTrackingDashboard extends StatelessWidget {
           return _buildError(context, state);
         } else if (state is RiderTrackingStopped) {
           return _buildStopped(context);
+        } else if (state is RiderTrackingLoading) {
+          return _buildLoading(context);
         }
 
         return _buildInitial(context);
@@ -332,8 +334,32 @@ class RiderTrackingDashboard extends StatelessWidget {
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(
-              'Initializing tracking...',
+              'Preparing tracking...',
               style: TextStyle(color: Colors.grey[700]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoading(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Fetching assignment from server...',
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This may take a few seconds',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),

@@ -1,4 +1,3 @@
-import 'package:bus_tracker/presentation/bloc/rider_tracking/rider_tracking_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/user.dart';
@@ -6,6 +5,7 @@ import '../bloc/auth/auth_bloc.dart';
 import '../bloc/auth/auth_state.dart';
 import '../bloc/rider_tracking/rider_tracking_bloc.dart';
 import '../bloc/rider_tracking/rider_tracking_event.dart';
+import '../bloc/rider_tracking/rider_tracking_state.dart';
 import 'rider_dashboard_page.dart';
 import 'rider_map_page.dart';
 import 'profile_page.dart';
@@ -28,27 +28,53 @@ class _RiderNavigationWrapperState extends State<RiderNavigationWrapper> {
   void initState() {
     super.initState();
     _currentUser = widget.rider;
-    // Automatically start tracking when rider logs in
-    // Use both immediate and post-frame callback to ensure it triggers
-    _startTrackingImmediately();
+
+    // Get BLoC reference immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _startTrackingImmediately();
+        _initializeTracking();
       }
     });
   }
 
-  void _startTrackingImmediately() {
+  void _initializeTracking() {
     if (!mounted) return;
 
-    _riderTrackingBloc = context.read<RiderTrackingBloc>();
+    try {
+      _riderTrackingBloc = context.read<RiderTrackingBloc>();
+      final currentState = _riderTrackingBloc?.state;
 
-    // Check if already tracking to avoid duplicate starts
-    if (_riderTrackingBloc?.state is! RiderTrackingActive) {
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('🚀 Initializing rider tracking');
+      debugPrint('   Rider: ${widget.rider.name}');
+      debugPrint('   User ID: ${widget.rider.id}');
+      debugPrint('   Current BLoC state: ${currentState.runtimeType}');
+
+      // Force tracking to start regardless of current state
+      // The BLoC will handle stopping previous tracking if needed
+      debugPrint('📤 Dispatching StartTracking event...');
       _riderTrackingBloc?.add(StartTracking(widget.rider));
-      debugPrint(
-        '🚀 Auto-starting rider tracking on login for: ${widget.rider.name}',
-      );
+
+      // Wait a frame and verify the event was received
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final newState = _riderTrackingBloc?.state;
+          debugPrint('🔍 State after event dispatch: ${newState.runtimeType}');
+
+          if (newState is RiderTrackingInitial) {
+            debugPrint('⚠️ WARNING: State still Initial after event dispatch!');
+            debugPrint('   This suggests the event was not processed.');
+            debugPrint('   Attempting to dispatch again...');
+            _riderTrackingBloc?.add(StartTracking(widget.rider));
+          }
+        }
+      });
+
+      debugPrint('✅ StartTracking event dispatched');
+      debugPrint('═══════════════════════════════════════');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error initializing tracking: $e');
+      debugPrint('   Stack trace: $stackTrace');
     }
   }
 

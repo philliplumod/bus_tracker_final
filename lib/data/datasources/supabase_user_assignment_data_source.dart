@@ -24,6 +24,8 @@ class SupabaseUserAssignmentDataSource {
   /// Get Supabase client instance
   static SupabaseClient get client {
     if (_client == null) {
+      debugPrint('❌ ERROR: Supabase client not initialized!');
+      debugPrint('   Attempting to initialize now...');
       throw StateError(
         'Supabase not initialized! Call SupabaseUserAssignmentDataSource.initialize() first',
       );
@@ -31,13 +33,23 @@ class SupabaseUserAssignmentDataSource {
     return _client!;
   }
 
+  /// Check if Supabase is initialized
+  static bool get isInitialized => _client != null;
+
   /// Fetch user assignment from user_assignments_detailed view
   Future<UserAssignment?> getUserAssignment(String userId) async {
     try {
+      // Ensure Supabase is initialized
+      if (!isInitialized) {
+        debugPrint('⚠️ Supabase not initialized, initializing now...');
+        await initialize();
+      }
+
       debugPrint('═══════════════════════════════════════');
       debugPrint('🔍 Fetching user assignment from Supabase');
       debugPrint('   User ID: $userId');
       debugPrint('   Table: user_assignments_detailed');
+      debugPrint('   Supabase initialized: $isInitialized');
 
       final response =
           await client

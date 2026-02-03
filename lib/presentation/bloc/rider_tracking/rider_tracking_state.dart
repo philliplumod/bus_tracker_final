@@ -9,6 +9,8 @@ abstract class RiderTrackingState extends Equatable {
 
 class RiderTrackingInitial extends RiderTrackingState {}
 
+class RiderTrackingLoading extends RiderTrackingState {}
+
 class RiderTrackingActive extends RiderTrackingState {
   final double latitude;
   final double longitude;

@@ -1,5 +1,3 @@
-import 'package:bus_tracker/presentation/bloc/rider_tracking/rider_tracking_bloc.dart';
-import 'package:bus_tracker/presentation/bloc/rider_tracking/rider_tracking_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -9,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'core/di/dependency_injection.dart';
 import 'core/services/app_lifecycle_manager.dart';
+import 'core/widgets/lifecycle_aware_widget.dart';
 import 'data/datasources/supabase_user_assignment_data_source.dart';
 import 'domain/entities/user.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
@@ -95,26 +94,14 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
-    // Initialize lifecycle manager
+    // Initialize lifecycle manager without context-dependent callbacks
     _lifecycleManager = AppLifecycleManager(
       settingsRepository: DependencyInjection.appSettingsRepository,
       hiveService: DependencyInjection.hiveService,
       onResumed: () {
-        debugPrint('App resumed - refreshing data');
-        // Trigger data refresh when app resumes
-        final authBloc = context.read<AuthBloc>();
-        final authState = authBloc.state;
-
-        if (authState is AuthAuthenticated &&
-            authState.user.role == UserRole.rider) {
-          debugPrint(
-            'App resumed this is the api keys ${const String.fromEnvironment('NEXT_PUBLIC_SUPABASE_URL')} ${const String.fromEnvironment('NEXT_PUBLIC_SUPABASE_ANON_KEY')} ${const String.fromEnvironment('SUPABASE_SERVICE_ROLE_KEY')}',
-          );
-          // Restart tracking to fetch fresh data from Supabase
-          final riderTrackingBloc = context.read<RiderTrackingBloc>();
-          riderTrackingBloc.add(StartTracking(authState.user));
-          debugPrint('🔄 Restarted tracking with fresh Supabase data');
-        }
+        debugPrint('App resumed - data refresh will be handled in widget tree');
+        // Note: Data refresh is now handled via BlocBuilder/BlocConsumer
+        // in the widget tree where context is available
       },
       onPaused: () {
         debugPrint('App paused - saving state');
@@ -143,79 +130,82 @@ class _MyAppState extends State<MyApp> {
                       ? settingsState.themeMode
                       : themeState.themeMode;
 
-              return MaterialApp(
-                debugShowCheckedModeBanner: false,
-                title: 'Bus Tracker',
-                theme: AppTheme.lightTheme,
-                darkTheme: AppTheme.darkTheme,
-                themeMode: themeMode,
-                home: BlocConsumer<AuthBloc, AuthState>(
-                  listener: (context, authState) {
-                    // Handle errors at the app level to ensure SnackBar shows
-                    if (authState is AuthError) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.error_outline,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      authState.message,
-                                      style: const TextStyle(fontSize: 14),
+              return LifecycleAwareWidget(
+                child: MaterialApp(
+                  debugShowCheckedModeBanner: false,
+                  title: 'Bus Tracker',
+                  theme: AppTheme.lightTheme,
+                  darkTheme: AppTheme.darkTheme,
+                  themeMode: themeMode,
+                  home: BlocConsumer<AuthBloc, AuthState>(
+                    listener: (context, authState) {
+                      // Handle errors at the app level to ensure SnackBar shows
+                      if (authState is AuthError) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.white,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        authState.message,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Colors.red.shade700,
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 5),
+                                action: SnackBarAction(
+                                  label: 'Dismiss',
+                                  textColor: Colors.white,
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).hideCurrentSnackBar();
+                                  },
+                                ),
                               ),
-                              backgroundColor: Colors.red.shade700,
-                              behavior: SnackBarBehavior.floating,
-                              duration: const Duration(seconds: 5),
-                              action: SnackBarAction(
-                                label: 'Dismiss',
-                                textColor: Colors.white,
-                                onPressed: () {
-                                  ScaffoldMessenger.of(
-                                    context,
-                                  ).hideCurrentSnackBar();
-                                },
-                              ),
-                            ),
-                          );
-                        }
-                      });
-                    }
-                  },
-                  builder: (context, authState) {
-                    if (authState is AuthLoading || authState is AuthInitial) {
-                      return const Scaffold(
-                        body: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    if (authState is AuthAuthenticated) {
-                      // Route based on user role
-                      final user = authState.user;
-
-                      switch (user.role) {
-                        case UserRole.rider:
-                          return SafeArea(
-                            child: RiderNavigationWrapper(rider: user),
-                          );
-                        case UserRole.passenger:
-                          return const SafeArea(
-                            child: PassengerNavigationWrapper(),
-                          );
+                            );
+                          }
+                        });
                       }
-                    }
+                    },
+                    builder: (context, authState) {
+                      if (authState is AuthLoading ||
+                          authState is AuthInitial) {
+                        return const Scaffold(
+                          body: Center(child: CircularProgressIndicator()),
+                        );
+                      }
 
-                    // Default to login page if unauthenticated or error
-                    return const LoginPage();
-                  },
+                      if (authState is AuthAuthenticated) {
+                        // Route based on user role
+                        final user = authState.user;
+
+                        switch (user.role) {
+                          case UserRole.rider:
+                            return SafeArea(
+                              child: RiderNavigationWrapper(rider: user),
+                            );
+                          case UserRole.passenger:
+                            return const SafeArea(
+                              child: PassengerNavigationWrapper(),
+                            );
+                        }
+                      }
+
+                      // Default to login page if unauthenticated or error
+                      return const LoginPage();
+                    },
+                  ),
                 ),
               );
             },

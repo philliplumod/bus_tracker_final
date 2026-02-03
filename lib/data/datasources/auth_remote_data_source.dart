@@ -409,18 +409,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final userId = prefs.getString('user_id');
       final roleString = prefs.getString('user_role');
 
-      // If we have an access token, try to fetch from backend
-      if (accessToken != null) {
+      // For riders, skip backend API and use local storage + Supabase
+      // Rider assignments are now fetched directly from Supabase
+      if (roleString == 'rider') {
+        debugPrint(
+          '👤 Rider detected - using local storage (Supabase handles assignments)',
+        );
+        // Skip to local storage fallback for riders
+      } else if (accessToken != null) {
+        // For non-riders, try to fetch from backend
         // Ensure the ApiClient has the token
         apiClient.setAuthToken(accessToken);
 
         try {
-          // For riders, use the rider profile endpoint to get complete data
+          // Use generic auth endpoint for passengers and other roles
           String endpoint = '/auth/user';
-          if (roleString == 'rider' && userId != null) {
-            endpoint = '/riders/$userId/profile';
-            debugPrint('📡 Fetching rider profile from: $endpoint');
-          }
+          debugPrint('📡 Fetching user profile from: $endpoint');
 
           // Use ApiClient instead of raw HTTP client for consistent token handling
           final data = await apiClient.get(endpoint);
