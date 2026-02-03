@@ -20,6 +20,7 @@ class User extends Equatable {
   final double? startingTerminalLng;
   final double? destinationTerminalLat;
   final double? destinationTerminalLng;
+  final DateTime? assignedAt;
 
   const User({
     required this.id,
@@ -37,6 +38,7 @@ class User extends Equatable {
     this.startingTerminalLng,
     this.destinationTerminalLat,
     this.destinationTerminalLng,
+    this.assignedAt,
   });
 
   Map<String, dynamic> toJson() {
@@ -56,6 +58,7 @@ class User extends Equatable {
       'startingTerminalLng': startingTerminalLng,
       'destinationTerminalLat': destinationTerminalLat,
       'destinationTerminalLng': destinationTerminalLng,
+      'assignedAt': assignedAt?.toIso8601String(),
     };
   }
 
@@ -97,6 +100,10 @@ class User extends Equatable {
           json['destinationTerminalLng'] != null
               ? (json['destinationTerminalLng'] as num).toDouble()
               : null,
+      assignedAt:
+          json['assignedAt'] != null
+              ? DateTime.parse(json['assignedAt'] as String)
+              : null,
     );
   }
 
@@ -116,6 +123,7 @@ class User extends Equatable {
     double? startingTerminalLng,
     double? destinationTerminalLat,
     double? destinationTerminalLng,
+    DateTime? assignedAt,
   }) {
     return User(
       id: id ?? this.id,
@@ -135,6 +143,7 @@ class User extends Equatable {
           destinationTerminalLat ?? this.destinationTerminalLat,
       destinationTerminalLng:
           destinationTerminalLng ?? this.destinationTerminalLng,
+      assignedAt: assignedAt ?? this.assignedAt,
     );
   }
 
@@ -155,5 +164,6 @@ class User extends Equatable {
     startingTerminalLng,
     destinationTerminalLat,
     destinationTerminalLng,
+    assignedAt,
   ];
 }

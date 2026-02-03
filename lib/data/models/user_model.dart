@@ -14,6 +14,7 @@ class UserModel extends User {
     super.startingTerminalLng,
     super.destinationTerminalLat,
     super.destinationTerminalLng,
+    super.assignedAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -42,6 +43,10 @@ class UserModel extends User {
           json['destinationTerminalLng'] != null
               ? (json['destinationTerminalLng'] as num).toDouble()
               : null,
+      assignedAt:
+          json['assignedAt'] != null
+              ? DateTime.parse(json['assignedAt'] as String)
+              : null,
     );
   }
 
@@ -60,6 +65,7 @@ class UserModel extends User {
       'startingTerminalLng': startingTerminalLng,
       'destinationTerminalLat': destinationTerminalLat,
       'destinationTerminalLng': destinationTerminalLng,
+      'assignedAt': assignedAt?.toIso8601String(),
     };
   }
 

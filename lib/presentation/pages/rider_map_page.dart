@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../core/utils/location_service.dart';
 import '../../domain/entities/user.dart';
 import '../bloc/map/map_bloc.dart';
 import '../bloc/map/map_event.dart';
@@ -21,6 +22,10 @@ class RiderMapPage extends StatefulWidget {
 
 class _RiderMapPageState extends State<RiderMapPage> {
   GoogleMapController? _mapController;
+  String? _currentLocationAddress;
+  String? _destinationLocationAddress;
+  double? _distanceToDestination;
+  int? _estimatedTravelTime;
 
   @override
   void initState() {
@@ -31,6 +36,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
         context.read<RiderTrackingBloc>().add(StartTracking(widget.rider));
         context.read<MapBloc>().add(LoadUserLocation());
         context.read<MapBloc>().add(SubscribeToBusUpdates());
+        _loadLocationDetails();
       }
     });
   }
@@ -44,6 +50,60 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
+  }
+
+  Future<void> _loadLocationDetails() async {
+    final mapState = context.read<MapBloc>().state;
+    if (mapState is MapLoaded) {
+      _updateLocationDetails(
+        mapState.userLocation.latitude,
+        mapState.userLocation.longitude,
+      );
+    }
+  }
+
+  Future<void> _updateLocationDetails(double lat, double lon) async {
+    try {
+      // Get current location address
+      final address = await LocationService.getAddressFromCoordinates(lat, lon);
+
+      // Calculate distance to destination if available
+      double? distance;
+      int? travelTime;
+      String? destAddress;
+
+      if (widget.rider.destinationTerminalLat != null &&
+          widget.rider.destinationTerminalLng != null) {
+        distance = LocationService.calculateDistance(
+          lat,
+          lon,
+          widget.rider.destinationTerminalLat!,
+          widget.rider.destinationTerminalLng!,
+        );
+        travelTime = LocationService.estimateTravelTime(distance);
+
+        // Get destination address if not already set
+        if (widget.rider.destinationTerminal != null) {
+          destAddress = widget.rider.destinationTerminal;
+        } else {
+          destAddress = await LocationService.getAddressFromCoordinates(
+            widget.rider.destinationTerminalLat!,
+            widget.rider.destinationTerminalLng!,
+          );
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentLocationAddress = address;
+          _distanceToDestination = distance;
+          _estimatedTravelTime = travelTime;
+          _destinationLocationAddress = destAddress;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error updating location details: $e');
+    }
   }
 
   @override
@@ -81,6 +141,11 @@ class _RiderMapPageState extends State<RiderMapPage> {
                   zoom: 16.0,
                 ),
               ),
+            );
+            // Update location details when location changes
+            _updateLocationDetails(
+              state.userLocation.latitude,
+              state.userLocation.longitude,
             );
           }
         },
@@ -131,87 +196,104 @@ class _RiderMapPageState extends State<RiderMapPage> {
                   return _buildTrackingStatusCard(trackingState);
                 },
               ),
-              // Route Information Card
-              if (widget.rider.assignedRoute != null)
+
+              // Route & Assignment Information Card
+              if (widget.rider.assignedRoute != null ||
+                  widget.rider.busName != null)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
+                    horizontal: 16,
+                    vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).primaryColor.withOpacity(0.15),
+                        Theme.of(context).primaryColor.withOpacity(0.05),
+                      ],
+                    ),
                     border: Border(
                       bottom: BorderSide(
                         color: Theme.of(context).primaryColor.withOpacity(0.3),
+                        width: 2,
                       ),
                     ),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.route,
-                        color: Theme.of(context).primaryColor,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Route:',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                      if (widget.rider.busName != null) ...[
+                        Icon(
+                          Icons.directions_bus,
+                          color: Theme.of(context).primaryColor,
+                          size: 20,
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        widget.rider.assignedRoute!,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.rider.busName!,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
+                      ],
+                      if (widget.rider.busName != null &&
+                          widget.rider.assignedRoute != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Container(
+                            width: 1,
+                            height: 20,
+                            color: Theme.of(context).dividerColor,
+                          ),
+                        ),
+                      if (widget.rider.assignedRoute != null) ...[
+                        Icon(
+                          Icons.route,
+                          color: Theme.of(context).primaryColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            widget.rider.assignedRoute!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
+
               // Map
               Expanded(
-                child: GoogleMap(
-                  onMapCreated: _onMapCreated,
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(
-                      state.userLocation.latitude,
-                      state.userLocation.longitude,
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      onMapCreated: _onMapCreated,
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(
+                          state.userLocation.latitude,
+                          state.userLocation.longitude,
+                        ),
+                        zoom: 16.0,
+                      ),
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: true,
+                      zoomControlsEnabled: true,
+                      markers: _buildMarkers(state),
                     ),
-                    zoom: 16.0,
-                  ),
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                  zoomControlsEnabled: true,
-                  markers: {
-                    Marker(
-                      markerId: const MarkerId('rider_location'),
-                      position: LatLng(
-                        state.userLocation.latitude,
-                        state.userLocation.longitude,
-                      ),
-                      icon: BitmapDescriptor.defaultMarkerWithHue(
-                        BitmapDescriptor.hueBlue,
-                      ),
-                      infoWindow: InfoWindow(
-                        title: widget.rider.busName ?? 'Your Location',
-                        snippet: widget.rider.assignedRoute ?? 'Rider',
-                      ),
-                    ),
-                  },
+                  ],
                 ),
               ),
-              // Location Information Card
+
+              // Enhanced Location Information Card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
                 decoration: BoxDecoration(
                   color:
                       Theme.of(context).brightness == Brightness.dark
@@ -219,33 +301,260 @@ class _RiderMapPageState extends State<RiderMapPage> {
                           : Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, -4),
                     ),
                   ],
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).primaryColor,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${state.userLocation.latitude.toStringAsFixed(4)}, ${state.userLocation.longitude.toStringAsFixed(4)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    // Current Location Section
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.my_location,
+                                  color: Colors.blue,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Current Location',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.green.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.green,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Text(
+                                      'LIVE',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          if (_currentLocationAddress != null)
+                            Text(
+                              _currentLocationAddress!,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                height: 1.4,
+                              ),
+                            )
+                          else
+                            Text(
+                              '${state.userLocation.latitude.toStringAsFixed(6)}, ${state.userLocation.longitude.toStringAsFixed(6)}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Accuracy: ±${state.userLocation.accuracy.toStringAsFixed(0)}m',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      '±${state.userLocation.accuracy.toStringAsFixed(0)}m',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                    ),
+
+                    // Destination Section
+                    if (_destinationLocationAddress != null &&
+                        _distanceToDestination != null) ...[
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Theme.of(context).dividerColor.withOpacity(0.3),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.flag,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    'Destination Terminal',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              _destinationLocationAddress!,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: Colors.orange.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        const Icon(
+                                          Icons.straighten,
+                                          color: Colors.orange,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                          'Distance',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          LocationService.formatDistance(
+                                            _distanceToDestination!,
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (_estimatedTravelTime != null) ...[
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: Colors.purple.withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          const Icon(
+                                            Icons.access_time,
+                                            color: Colors.purple,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            'Est. Time',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            LocationService.formatTravelTime(
+                                              _estimatedTravelTime!,
+                                            ),
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.purple,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -254,6 +563,66 @@ class _RiderMapPageState extends State<RiderMapPage> {
         },
       ),
     );
+  }
+
+  Set<Marker> _buildMarkers(MapLoaded state) {
+    final markers = <Marker>{
+      // Current location marker
+      Marker(
+        markerId: const MarkerId('rider_location'),
+        position: LatLng(
+          state.userLocation.latitude,
+          state.userLocation.longitude,
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        infoWindow: InfoWindow(
+          title: widget.rider.busName ?? 'Your Location',
+          snippet: _currentLocationAddress ?? 'Current Position',
+        ),
+      ),
+    };
+
+    // Add destination marker if available
+    if (widget.rider.destinationTerminalLat != null &&
+        widget.rider.destinationTerminalLng != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('destination_terminal'),
+          position: LatLng(
+            widget.rider.destinationTerminalLat!,
+            widget.rider.destinationTerminalLng!,
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          infoWindow: InfoWindow(
+            title: 'Destination',
+            snippet: widget.rider.destinationTerminal ?? 'Terminal',
+          ),
+        ),
+      );
+    }
+
+    // Add starting terminal marker if available
+    if (widget.rider.startingTerminalLat != null &&
+        widget.rider.startingTerminalLng != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('starting_terminal'),
+          position: LatLng(
+            widget.rider.startingTerminalLat!,
+            widget.rider.startingTerminalLng!,
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueGreen,
+          ),
+          infoWindow: InfoWindow(
+            title: 'Starting Point',
+            snippet: widget.rider.startingTerminal ?? 'Terminal',
+          ),
+        ),
+      );
+    }
+
+    return markers;
   }
 
   Widget _buildTrackingStatusCard(RiderTrackingState trackingState) {
