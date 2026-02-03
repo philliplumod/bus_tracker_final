@@ -69,10 +69,7 @@ class _EnhancedRiderMapPageState extends State<EnhancedRiderMapPage> {
     );
   }
 
-  void _updateETAAndProgress(
-    double currentLat,
-    double currentLng,
-  ) {
+  void _updateETAAndProgress(double currentLat, double currentLng) {
     if (_assignedRoute == null) return;
 
     // Calculate ETA to destination terminal (currentSpeed not available)
@@ -107,21 +104,24 @@ class _EnhancedRiderMapPageState extends State<EnhancedRiderMapPage> {
   }
 
   void _handleSignOut() {
+    // Capture the AuthBloc reference before showing the dialog to avoid context issues
+    final authBloc = context.read<AuthBloc>();
+
     showDialog(
       context: context,
       builder:
-          (context) => AlertDialog(
+          (dialogContext) => AlertDialog(
             title: const Text('Sign Out'),
             content: const Text('Are you sure you want to sign out?'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('Cancel'),
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  context.read<AuthBloc>().add(SignOutRequested());
+                  Navigator.pop(dialogContext);
+                  authBloc.add(SignOutRequested());
                 },
                 child: const Text('Sign Out'),
               ),
@@ -569,10 +569,7 @@ class _EnhancedRiderMapPageState extends State<EnhancedRiderMapPage> {
                     const SizedBox(height: 4),
                     Text(
                       'Accuracy: ±${state.userLocation.accuracy.toStringAsFixed(1)}m',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[700],
-                      ),
+                      style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                     ),
                   ],
                 ),

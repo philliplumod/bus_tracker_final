@@ -161,6 +161,7 @@ class DependencyInjection {
             signUp: signUp,
             signOut: signOut,
             getCurrentUser: getCurrentUser,
+            locationTrackingService: locationTrackingService,
           )..add(CheckAuthStatus()),
     ),
     BlocProvider<MapBloc>(

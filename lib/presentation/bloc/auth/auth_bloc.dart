@@ -5,6 +5,7 @@ import '../../../domain/usecases/get_current_user.dart';
 import '../../../domain/usecases/sign_in.dart';
 import '../../../domain/usecases/sign_out.dart';
 import '../../../domain/usecases/sign_up.dart';
+import '../../../service/location_tracking_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -13,12 +14,14 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
   final SignUp signUp;
   final SignOut signOut;
   final GetCurrentUser getCurrentUser;
+  final LocationTrackingService locationTrackingService;
 
   AuthBloc({
     required this.signIn,
     required this.signUp,
     required this.signOut,
     required this.getCurrentUser,
+    required this.locationTrackingService,
   }) : super(AuthInitial()) {
     on<CheckAuthStatus>(_onCheckAuthStatus);
     on<SignInRequested>(_onSignInRequested);
@@ -120,11 +123,19 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
     SignOutRequested event,
     Emitter<AuthState> emit,
   ) async {
+    debugPrint('🔓 AuthBloc: SignOutRequested - Stopping location tracking');
+
+    // Stop location tracking before signing out
+    if (locationTrackingService.isTracking) {
+      locationTrackingService.stopTracking();
+      debugPrint('✅ Location tracking stopped');
+    }
+
     emit(AuthLoading());
     final result = await signOut();
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (_) => emit(AuthUnauthenticated()),
-    );
+    result.fold((failure) => emit(AuthError(failure.message)), (_) {
+      debugPrint('✅ Sign out successful');
+      emit(AuthUnauthenticated());
+    });
   }
 }

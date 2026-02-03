@@ -10,6 +10,9 @@ class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
 
   void _handleSignOut(BuildContext context) {
+    // Capture the AuthBloc reference before showing the dialog to avoid context issues
+    final authBloc = context.read<AuthBloc>();
+
     showDialog(
       context: context,
       builder:
@@ -24,7 +27,7 @@ class MainMenuPage extends StatelessWidget {
               TextButton(
                 onPressed: () {
                   Navigator.pop(dialogContext);
-                  context.read<AuthBloc>().add(SignOutRequested());
+                  authBloc.add(SignOutRequested());
                 },
                 child: const Text('Sign Out'),
               ),
