@@ -249,6 +249,7 @@ class _RouteExplorerPageState extends State<RouteExplorerPage> {
                       ),
                     )
                     : GoogleMap(
+                      cloudMapId: 'ab6437d57e645dfdb9e48b8f',
                       onMapCreated: (controller) => _mapController = controller,
                       initialCameraPosition: CameraPosition(
                         target: LatLng(

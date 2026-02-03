@@ -110,6 +110,7 @@ class _BusRoutePageState extends State<BusRoutePage> {
                     widget.bus.latitude != null &&
                     widget.bus.longitude != null) {
                   return GoogleMap(
+                    cloudMapId: 'ab6437d57e645dfdb9e48b8f',
                     initialCameraPosition: CameraPosition(
                       target: LatLng(
                         widget.bus.latitude!,

@@ -47,15 +47,11 @@ class ApiRouteModel {
     }
 
     // Get terminal IDs from either direct fields or nested terminal objects
-    final String startingTerminalId =
-        (json['starting_terminal_id'] as String?) ??
-        startingTerm?.terminalId ??
-        '';
+    final String? startingTerminalId =
+        (json['starting_terminal_id'] as String?) ?? startingTerm?.terminalId;
 
-    final String destinationTerminalId =
-        (json['destination_terminal_id'] as String?) ??
-        destTerm?.terminalId ??
-        '';
+    final String? destinationTerminalId =
+        (json['destination_terminal_id'] as String?) ?? destTerm?.terminalId;
 
     return ApiRouteModel(
       routeId: json['route_id'] as String,

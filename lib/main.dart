@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'core/di/dependency_injection.dart';
 import 'core/services/app_lifecycle_manager.dart';
+import 'data/datasources/supabase_user_assignment_data_source.dart';
 import 'domain/entities/user.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
 import 'presentation/bloc/auth/auth_state.dart';
@@ -54,6 +55,18 @@ Future<void> main() async {
     debugPrint('✅ Firebase initialized successfully');
   } catch (e) {
     debugPrint('❌ Failed to initialize Firebase: $e');
+  }
+
+  // Initialize Supabase
+  try {
+    debugPrint('🚀 Initializing Supabase...');
+    await SupabaseUserAssignmentDataSource.initialize();
+    debugPrint('✅ Supabase initialized successfully');
+  } catch (e) {
+    debugPrint('❌ Failed to initialize Supabase: $e');
+    debugPrint(
+      '   Make sure you have set your Supabase credentials in supabase_config.dart',
+    );
   }
 
   // Initialize notifications

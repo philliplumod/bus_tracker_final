@@ -12,7 +12,7 @@ import '../../data/datasources/favorites_local_data_source.dart';
 import '../../data/datasources/recent_searches_data_source.dart';
 import '../../data/datasources/rider_location_remote_data_source.dart';
 import '../../data/datasources/route_remote_data_source.dart';
-import '../../data/datasources/user_assignment_remote_data_source.dart';
+import '../../data/datasources/supabase_user_assignment_data_source.dart';
 import '../../data/datasources/api_client.dart';
 import '../../data/datasources/backend_api_service.dart';
 import '../../data/repositories/auth_repository_impl.dart';
@@ -74,8 +74,8 @@ class DependencyInjection {
   static late final BusRemoteDataSource busRemoteDataSource;
   static late final RiderLocationRemoteDataSource riderLocationRemoteDataSource;
   static late final RouteRemoteDataSource routeRemoteDataSource;
-  static late final UserAssignmentRemoteDataSource
-  userAssignmentRemoteDataSource;
+  static late final SupabaseUserAssignmentDataSource
+  supabaseUserAssignmentDataSource;
 
   // Data Sources - Local
   static late final LocationLocalDataSource locationLocalDataSource;
@@ -150,10 +150,7 @@ class DependencyInjection {
     routeRemoteDataSource = RouteRemoteDataSourceImpl(
       dbRef: FirebaseDatabase.instance.ref(),
     );
-    userAssignmentRemoteDataSource = UserAssignmentRemoteDataSourceImpl(
-      backendApi: backendApiService,
-      dbRef: FirebaseDatabase.instance.ref(),
-    );
+    supabaseUserAssignmentDataSource = SupabaseUserAssignmentDataSource();
 
     // Initialize local data sources
     locationLocalDataSource = LocationLocalDataSourceImpl();
@@ -181,7 +178,7 @@ class DependencyInjection {
       remoteDataSource: riderLocationRemoteDataSource,
     );
     userAssignmentRepository = UserAssignmentRepositoryImpl(
-      remoteDataSource: userAssignmentRemoteDataSource,
+      supabaseDataSource: supabaseUserAssignmentDataSource,
     );
     routeRepository = RouteRepositoryImpl(
       remoteDataSource: routeRemoteDataSource,

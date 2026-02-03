@@ -194,7 +194,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
                 backgroundColor: Colors.red,
               ),
             );
-          } else if (state is MapLoaded && _mapController != null) {
+          } else if (state is MapLoaded && _mapController != null && mounted) {
             // Animate camera to rider's location
             _mapController!.animateCamera(
               CameraUpdate.newCameraPosition(
@@ -375,6 +375,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
                 child: Stack(
                   children: [
                     GoogleMap(
+                      cloudMapId: 'ab6437d57e645dfdb9e48b8f',
                       onMapCreated: _onMapCreated,
                       initialCameraPosition: CameraPosition(
                         target: LatLng(

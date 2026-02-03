@@ -247,7 +247,7 @@ class _EnhancedRiderMapPageState extends State<EnhancedRiderMapPage> {
               state.userLocation.longitude,
             );
 
-            if (_mapController != null) {
+            if (_mapController != null && mounted) {
               _mapController!.animateCamera(
                 CameraUpdate.newCameraPosition(
                   CameraPosition(
@@ -492,6 +492,7 @@ class _EnhancedRiderMapPageState extends State<EnhancedRiderMapPage> {
               // Map
               Expanded(
                 child: GoogleMap(
+                  cloudMapId: 'ab6437d57e645dfdb9e48b8f',
                   onMapCreated: _onMapCreated,
                   initialCameraPosition: CameraPosition(
                     target: LatLng(

@@ -37,9 +37,11 @@ class _CompactMapViewState extends State<CompactMapView> {
   }
 
   void _moveCameraToBus(LatLng busPosition) {
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(busPosition, AppConstants.selectedBusZoom),
-    );
+    if (mounted && _mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(busPosition, AppConstants.selectedBusZoom),
+      );
+    }
   }
 
   Set<Polyline> _buildPolylines() {
@@ -113,14 +115,17 @@ class _CompactMapViewState extends State<CompactMapView> {
     return Stack(
       children: [
         GoogleMap(
+          cloudMapId: 'ab6437d57e645dfdb9e48b8f',
           onMapCreated: (controller) {
-            _mapController = controller;
-            _mapController!.animateCamera(
-              CameraUpdate.newLatLngZoom(
-                widget.userPosition,
-                AppConstants.defaultZoom,
-              ),
-            );
+            if (mounted) {
+              _mapController = controller;
+              _mapController!.animateCamera(
+                CameraUpdate.newLatLngZoom(
+                  widget.userPosition,
+                  AppConstants.defaultZoom,
+                ),
+              );
+            }
           },
           myLocationEnabled: true,
           myLocationButtonEnabled: true,
