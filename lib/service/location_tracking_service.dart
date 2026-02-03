@@ -96,8 +96,9 @@ class LocationTrackingService {
 
       final update = RiderLocationUpdate(
         userId: _currentRider!.id,
-        busId: _currentRider!.busName ?? 'unknown',
-        routeId: _currentRider!.assignedRoute ?? 'unknown',
+        busId: _currentRider!.busId ?? _currentRider!.busName ?? 'unknown',
+        routeId:
+            _currentRider!.routeId ?? _currentRider!.assignedRoute ?? 'unknown',
         busRouteAssignmentId: _currentRider!.busRouteId ?? 'unknown',
         latitude: position.latitude,
         longitude: position.longitude,

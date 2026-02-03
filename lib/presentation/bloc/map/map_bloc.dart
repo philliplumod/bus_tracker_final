@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/distance_calculator.dart';
 import '../../../core/utils/directions_service.dart';
+import '../../../core/services/directions_service.dart' as route_service;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../domain/entities/bus.dart';
 import '../../../domain/usecases/get_user_location.dart';
@@ -16,6 +17,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   final GetUserLocation getUserLocation;
   final GetNearbyBuses getNearbyBuses;
   final WatchBusUpdates watchBusUpdates;
+  final route_service.DirectionsService directionsService;
 
   StreamSubscription? _busUpdateSubscription;
   final Set<String> _notifiedBuses = {};
@@ -24,11 +26,16 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     required this.getUserLocation,
     required this.getNearbyBuses,
     required this.watchBusUpdates,
-  }) : super(MapInitial()) {
+    route_service.DirectionsService? directionsService,
+  }) : directionsService =
+           directionsService ?? route_service.DirectionsService(),
+       super(MapInitial()) {
     on<LoadUserLocation>(_onLoadUserLocation);
     on<LoadNearbyBuses>(_onLoadNearbyBuses);
     on<SubscribeToBusUpdates>(_onSubscribeToBusUpdates);
     on<BusesUpdated>(_onBusesUpdated);
+    on<LoadRoute>(_onLoadRoute);
+    on<ClearRoute>(_onClearRoute);
   }
 
   Future<void> _onLoadUserLocation(
@@ -61,12 +68,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         buses,
         currentState.userLocation,
       );
-      emit(
-        MapLoaded(
-          userLocation: currentState.userLocation,
-          buses: busesWithDistance,
-        ),
-      );
+      emit(currentState.copyWith(buses: busesWithDistance));
     });
   }
 
@@ -110,8 +112,41 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       MapLoaded(
         userLocation: currentState.userLocation,
         buses: busesWithDistance,
+        routeData: currentState.routeData,
       ),
     );
+  }
+
+  Future<void> _onLoadRoute(LoadRoute event, Emitter<MapState> emit) async {
+    final currentState = state;
+    if (currentState is! MapLoaded) return;
+
+    // Mark as loading route
+    emit(currentState.copyWith(isLoadingRoute: true));
+
+    try {
+      final routeData = await directionsService.getRoute(
+        origin: event.origin,
+        destination: event.destination,
+      );
+
+      if (routeData != null) {
+        emit(
+          currentState.copyWith(routeData: routeData, isLoadingRoute: false),
+        );
+      } else {
+        emit(currentState.copyWith(isLoadingRoute: false));
+      }
+    } catch (e) {
+      emit(currentState.copyWith(isLoadingRoute: false));
+    }
+  }
+
+  void _onClearRoute(ClearRoute event, Emitter<MapState> emit) {
+    final currentState = state;
+    if (currentState is! MapLoaded) return;
+
+    emit(currentState.copyWith(clearRoute: true));
   }
 
   List<Bus> _calculateDistancesAndETA(List<Bus> buses, dynamic userLocation) {

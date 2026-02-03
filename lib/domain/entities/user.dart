@@ -9,6 +9,9 @@ class User extends Equatable {
   final UserRole role;
   final String? assignedRoute;
   final String? busName;
+  // IDs for backend tracking
+  final String? busId; // Actual bus ID from backend
+  final String? routeId; // Actual route ID from backend
   // Enhanced schema-based properties
   final String? busRouteId; // References user_assignments.bus_route_id
   final DateTime? createdAt;
@@ -29,6 +32,8 @@ class User extends Equatable {
     required this.role,
     this.assignedRoute,
     this.busName,
+    this.busId,
+    this.routeId,
     this.busRouteId,
     this.createdAt,
     this.updatedAt,
@@ -49,6 +54,8 @@ class User extends Equatable {
       'role': role.name,
       'assignedRoute': assignedRoute,
       'busName': busName,
+      'busId': busId,
+      'routeId': routeId,
       'busRouteId': busRouteId,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
@@ -73,6 +80,8 @@ class User extends Equatable {
       ),
       assignedRoute: json['assignedRoute'] as String?,
       busName: json['busName'] as String?,
+      busId: json['busId'] as String?,
+      routeId: json['routeId'] as String?,
       busRouteId: json['busRouteId'] as String?,
       createdAt:
           json['created_at'] != null
@@ -114,6 +123,8 @@ class User extends Equatable {
     UserRole? role,
     String? assignedRoute,
     String? busName,
+    String? busId,
+    String? routeId,
     String? busRouteId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -132,6 +143,8 @@ class User extends Equatable {
       role: role ?? this.role,
       assignedRoute: assignedRoute ?? this.assignedRoute,
       busName: busName ?? this.busName,
+      busId: busId ?? this.busId,
+      routeId: routeId ?? this.routeId,
       busRouteId: busRouteId ?? this.busRouteId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -155,6 +168,8 @@ class User extends Equatable {
     role,
     assignedRoute,
     busName,
+    busId,
+    routeId,
     busRouteId,
     createdAt,
     updatedAt,

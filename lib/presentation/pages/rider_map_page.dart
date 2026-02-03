@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/utils/location_service.dart';
+import '../../core/services/marker_animation_service.dart';
 import '../../domain/entities/user.dart';
 import '../bloc/map/map_bloc.dart';
 import '../bloc/map/map_event.dart';
@@ -26,6 +27,11 @@ class _RiderMapPageState extends State<RiderMapPage> {
   String? _destinationLocationAddress;
   double? _distanceToDestination;
   int? _estimatedTravelTime;
+  MarkerAnimationService? _markerAnimation;
+  LatLng? _animatedMarkerPosition;
+  double _markerRotation = 0;
+  Set<Polyline> _polylines = {};
+  bool _routeLoaded = false;
 
   @override
   void initState() {
@@ -45,6 +51,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
   void dispose() {
     context.read<RiderTrackingBloc>().add(const StopTracking());
     _mapController?.dispose();
+    _markerAnimation?.dispose();
     super.dispose();
   }
 
@@ -91,6 +98,11 @@ class _RiderMapPageState extends State<RiderMapPage> {
             widget.rider.destinationTerminalLng!,
           );
         }
+
+        // Load route polyline if not already loaded
+        if (!_routeLoaded && widget.rider.destinationTerminalLat != null) {
+          _loadRoutePolyline(lat, lon);
+        }
       }
 
       if (mounted) {
@@ -100,10 +112,36 @@ class _RiderMapPageState extends State<RiderMapPage> {
           _estimatedTravelTime = travelTime;
           _destinationLocationAddress = destAddress;
         });
+
+        // Update animated marker position
+        if (_markerAnimation != null) {
+          _markerAnimation!.updatePosition(LatLng(lat, lon));
+        }
       }
     } catch (e) {
       debugPrint('Error updating location details: $e');
     }
+  }
+
+  /// Load route polyline from current location to destination
+  Future<void> _loadRoutePolyline(double lat, double lon) async {
+    if (widget.rider.destinationTerminalLat == null ||
+        widget.rider.destinationTerminalLng == null) {
+      return;
+    }
+
+    final origin = LatLng(lat, lon);
+    final destination = LatLng(
+      widget.rider.destinationTerminalLat!,
+      widget.rider.destinationTerminalLng!,
+    );
+
+    // Request route from MapBloc
+    context.read<MapBloc>().add(
+      LoadRoute(origin: origin, destination: destination),
+    );
+
+    _routeLoaded = true;
   }
 
   @override
@@ -147,6 +185,34 @@ class _RiderMapPageState extends State<RiderMapPage> {
               state.userLocation.latitude,
               state.userLocation.longitude,
             );
+
+            // Update polyline if route data available
+            if (state.routeData != null && _polylines.isEmpty) {
+              _updatePolyline(state.routeData!.polylinePoints);
+
+              // Initialize marker animation
+              if (_markerAnimation == null) {
+                _markerAnimation = MarkerAnimationService(
+                  routePoints: state.routeData!.polylinePoints,
+                  onPositionUpdate: (position, bearing) {
+                    if (mounted) {
+                      setState(() {
+                        _animatedMarkerPosition = position;
+                        _markerRotation = bearing;
+                      });
+                    }
+                  },
+                );
+
+                // Set initial position
+                _markerAnimation!.updatePosition(
+                  LatLng(
+                    state.userLocation.latitude,
+                    state.userLocation.longitude,
+                  ),
+                );
+              }
+            }
           }
         },
         builder: (context, state) {
@@ -282,11 +348,52 @@ class _RiderMapPageState extends State<RiderMapPage> {
                         ),
                         zoom: 16.0,
                       ),
-                      myLocationEnabled: true,
+                      myLocationEnabled: false, // Use custom marker instead
                       myLocationButtonEnabled: true,
                       zoomControlsEnabled: true,
                       markers: _buildMarkers(state),
+                      polylines: _polylines,
                     ),
+                    // Route loading indicator
+                    if (state.isLoadingRoute)
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Loading route...',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -565,16 +672,36 @@ class _RiderMapPageState extends State<RiderMapPage> {
     );
   }
 
+  /// Update polyline with route points
+  void _updatePolyline(List<LatLng> points) {
+    if (mounted) {
+      setState(() {
+        _polylines = {
+          Polyline(
+            polylineId: const PolylineId('route'),
+            points: points,
+            color: Colors.red,
+            width: 5,
+            geodesic: true,
+            patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+          ),
+        };
+      });
+    }
+  }
+
   Set<Marker> _buildMarkers(MapLoaded state) {
     final markers = <Marker>{
-      // Current location marker
+      // Current location marker (animated)
       Marker(
         markerId: const MarkerId('rider_location'),
-        position: LatLng(
-          state.userLocation.latitude,
-          state.userLocation.longitude,
-        ),
+        position:
+            _animatedMarkerPosition ??
+            LatLng(state.userLocation.latitude, state.userLocation.longitude),
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        rotation: _markerRotation,
+        anchor: const Offset(0.5, 0.5),
+        flat: true, // Enable rotation
         infoWindow: InfoWindow(
           title: widget.rider.busName ?? 'Your Location',
           snippet: _currentLocationAddress ?? 'Current Position',
