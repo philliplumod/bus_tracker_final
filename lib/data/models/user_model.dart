@@ -65,8 +65,6 @@ class UserModel extends User {
 
   static UserRole _roleFromString(String role) {
     switch (role.toLowerCase()) {
-      case 'admin':
-        return UserRole.admin;
       case 'rider':
         return UserRole.rider;
       case 'passenger':
@@ -78,8 +76,6 @@ class UserModel extends User {
 
   static String _roleToString(UserRole role) {
     switch (role) {
-      case UserRole.admin:
-        return 'admin';
       case UserRole.rider:
         return 'rider';
       case UserRole.passenger:

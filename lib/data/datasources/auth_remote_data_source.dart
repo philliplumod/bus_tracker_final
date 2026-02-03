@@ -347,8 +347,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   String _roleToString(dynamic role) {
     if (role is String) return role;
     switch (role) {
-      case UserRole.admin:
-        return 'admin';
       case UserRole.rider:
         return 'rider';
       case UserRole.passenger:
@@ -360,8 +358,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   UserRole _roleFromString(String role) {
     switch (role.toLowerCase()) {
-      case 'admin':
-        return UserRole.admin;
       case 'rider':
         return UserRole.rider;
       case 'passenger':

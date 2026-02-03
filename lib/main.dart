@@ -137,11 +137,6 @@ class MyApp extends StatelessWidget {
                       return const SafeArea(
                         child: PassengerNavigationWrapper(),
                       );
-                    case UserRole.admin:
-                      // TODO: Create admin page
-                      return const SafeArea(
-                        child: PassengerNavigationWrapper(),
-                      );
                   }
                 }
 

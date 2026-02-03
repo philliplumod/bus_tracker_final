@@ -375,7 +375,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Note: Only passengers can sign up. Rider accounts are created by admin.',
+                          'Note: Only passengers can sign up. Rider accounts are managed separately.',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
