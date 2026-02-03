@@ -2,10 +2,12 @@ import 'dart:async';
 import 'package:bus_tracker/domain/entities/user_assignment.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/entities/rider_location_update.dart';
 import '../../../domain/usecases/store_rider_location.dart';
 import '../../../domain/repositories/user_assignment_repository.dart';
 import '../../../service/location_tracking_service.dart';
+import '../../../data/datasources/api_client.dart';
 import 'rider_tracking_event.dart';
 import 'rider_tracking_state.dart';
 
@@ -13,12 +15,14 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
   final LocationTrackingService locationService;
   final StoreRiderLocation storeRiderLocation;
   final UserAssignmentRepository userAssignmentRepository;
+  final ApiClient apiClient;
   StreamSubscription<RiderLocationUpdate>? _locationSubscription;
 
   RiderTrackingBloc({
     required this.locationService,
     required this.storeRiderLocation,
     required this.userAssignmentRepository,
+    required this.apiClient,
   }) : super(RiderTrackingInitial()) {
     on<StartTracking>(_onStartTracking);
     on<StopTracking>(_onStopTracking);
@@ -30,8 +34,52 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
     Emitter<RiderTrackingState> emit,
   ) async {
     try {
+      debugPrint('═══════════════════════════════════════');
       debugPrint('🚀 Starting rider tracking for: ${event.rider.name}');
-      debugPrint('   User ID: ${event.rider.id}');
+      debugPrint('   User ID: "${event.rider.id}"');
+      debugPrint('   User ID type: ${event.rider.id.runtimeType}');
+      debugPrint('   User ID length: ${event.rider.id.length}');
+      debugPrint('   User email: ${event.rider.email}');
+      debugPrint('   User role: ${event.rider.role}');
+
+      // CRITICAL: Ensure auth token is set before making API calls
+      debugPrint('🔐 Checking auth token...');
+      if (!apiClient.hasAuthToken()) {
+        debugPrint('⚠️ No auth token found in API client!');
+        debugPrint('   Attempting to reload token from storage...');
+
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('access_token');
+
+          if (token != null && token.isNotEmpty) {
+            apiClient.setAuthToken(token);
+            debugPrint('✅ Token reloaded from storage');
+          } else {
+            debugPrint('❌ No token found in storage either!');
+            emit(
+              RiderTrackingError(
+                'Authentication token missing.\n\n'
+                'Please logout and login again to refresh your session.',
+              ),
+            );
+            return;
+          }
+        } catch (e) {
+          debugPrint('❌ Failed to reload token: $e');
+          emit(
+            RiderTrackingError(
+              'Failed to reload authentication.\n\n'
+              'Please logout and login again.',
+            ),
+          );
+          return;
+        }
+      } else {
+        debugPrint('✅ Auth token is present in API client');
+      }
+
+      debugPrint('═══════════════════════════════════════');
 
       // Fetch actual UserAssignment from repository
       final assignmentResult = await userAssignmentRepository.getUserAssignment(
@@ -39,18 +87,43 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
       );
 
       // Handle the Either result
+      String? errorMessage;
       final UserAssignment? assignment = assignmentResult.fold((failure) {
         debugPrint('⚠️ Failed to fetch user assignment: ${failure.message}');
+        errorMessage = failure.message;
         return null;
       }, (assignment) => assignment);
 
       if (assignment == null) {
         debugPrint('❌ No assignment found for user ${event.rider.id}');
-        emit(
-          RiderTrackingError(
-            'No bus route assignment found. Please contact admin.',
-          ),
-        );
+
+        // Determine if it's a network error or missing assignment
+        String message;
+        if (errorMessage != null &&
+            (errorMessage!.contains('401') ||
+                errorMessage!.contains('Unauthorized') ||
+                errorMessage!.contains('expired token'))) {
+          message =
+              'Authentication error. Please check your network connection and try logging in again.';
+        } else if (errorMessage != null &&
+            (errorMessage!.contains('Failed to host lookup') ||
+                errorMessage!.contains('SocketException') ||
+                errorMessage!.contains('Connection refused'))) {
+          message =
+              'Cannot connect to server. Please check:\n'
+              '1. Your internet connection\n'
+              '2. Backend server is running\n'
+              '3. Run: adb reverse tcp:3000 tcp:3000';
+        } else {
+          message =
+              'No bus route assignment found.\n\n'
+              'Please contact your administrator to:\n'
+              '• Assign you to a bus\n'
+              '• Assign you to a route\n\n'
+              'Pull down to refresh once assigned.';
+        }
+
+        emit(RiderTrackingError(message));
         return;
       }
 

@@ -110,15 +110,43 @@ class ApiUserAssignmentModel {
 
   /// Convert to domain entity
   UserAssignment toEntity() {
-    if (user == null || busRoute == null) {
+    // Detailed validation with helpful error messages
+    if (user == null) {
       throw StateError(
-        'User and bus route must be loaded to convert to entity',
+        'Backend API Error: Assignment is missing "user" object.\n'
+        'Your backend must include nested user data.\n'
+        'Expected: { "user": { "id": "...", "name": "...", ... } }\n'
+        'See BACKEND_API_REQUIREMENTS.md for the correct structure.',
+      );
+    }
+
+    if (busRoute == null) {
+      throw StateError(
+        'Backend API Error: Assignment is missing "bus_route" object.\n'
+        'Your backend must JOIN the bus_routes table.\n'
+        'Expected: { "bus_route": { "bus_id": "...", "route_id": "...", ... } }\n'
+        'See BACKEND_API_REQUIREMENTS.md for the correct SQL query.',
       );
     }
 
     final route = busRoute!.route;
     if (route == null) {
-      throw StateError('Route must be loaded in bus route');
+      throw StateError(
+        'Backend API Error: bus_route is missing "route" object.\n'
+        'Your backend must JOIN the routes table.\n'
+        'Expected: { "bus_route": { "route": { "route_name": "...", ... } } }\n'
+        'The backend needs to JOIN: user_assignments → bus_routes → routes.\n'
+        'See BACKEND_API_REQUIREMENTS.md for the complete SQL query.',
+      );
+    }
+
+    if (busRoute!.bus == null) {
+      throw StateError(
+        'Backend API Error: bus_route is missing "bus" object.\n'
+        'Your backend must JOIN the buses table.\n'
+        'Expected: { "bus_route": { "bus": { "bus_name": "...", ... } } }\n'
+        'See BACKEND_API_REQUIREMENTS.md for the correct structure.',
+      );
     }
 
     return UserAssignment(

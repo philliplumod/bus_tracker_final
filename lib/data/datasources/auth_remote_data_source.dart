@@ -70,6 +70,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
+        // Debug: Show what keys are in the response
+        debugPrint('🔍 Response keys: ${data.keys.toList()}');
+
         // Handle both 'user' and 'profile' response formats
         final userData = data['user'] ?? data['profile'];
         if (userData == null) {
@@ -85,11 +88,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
         // Store tokens from session object (new format) or root level (old format)
         final session = data['session'];
+        debugPrint('🔍 Session object: ${session != null ? "exists" : "null"}');
         if (session != null) {
+          debugPrint('🔍 Session keys: ${session.keys.toList()}');
           // New format: tokens are in session object
           if (session['access_token'] != null) {
-            await prefs.setString('access_token', session['access_token']);
+            final token = session['access_token'] as String;
+            await prefs.setString('access_token', token);
             debugPrint('🔑 Access token stored from session');
+            debugPrint('🔑 Token length: ${token.length} chars');
+            debugPrint(
+              '🔑 Token preview: ${token.substring(0, token.length > 50 ? 50 : token.length)}...',
+            );
+          } else {
+            debugPrint('⚠️ No access_token in session object!');
           }
           if (session['refresh_token'] != null) {
             await prefs.setString('refresh_token', session['refresh_token']);

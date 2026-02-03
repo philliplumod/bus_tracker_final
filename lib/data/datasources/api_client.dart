@@ -14,12 +14,26 @@ class ApiClient {
   /// Set authentication token for API requests
   void setAuthToken(String token) {
     _authToken = token;
-    debugPrint('✅ API auth token set');
+    debugPrint('✅ API auth token set (length: ${token.length} chars)');
+    debugPrint(
+      '   Token preview: ${token.substring(0, token.length > 50 ? 50 : token.length)}...',
+    );
+  }
+
+  /// Check if auth token is set
+  bool hasAuthToken() {
+    return _authToken != null && _authToken!.isNotEmpty;
+  }
+
+  /// Get current token (for debugging)
+  String? getCurrentToken() {
+    return _authToken;
   }
 
   /// Clear authentication token
   void clearAuthToken() {
     _authToken = null;
+    debugPrint('🗑️ API auth token cleared');
   }
 
   /// Get headers with authentication
@@ -28,6 +42,8 @@ class ApiClient {
 
     if (_authToken != null) {
       headers['Authorization'] = 'Bearer $_authToken';
+    } else {
+      debugPrint('⚠️ WARNING: Request has NO auth token!');
     }
 
     return headers;
@@ -39,11 +55,54 @@ class ApiClient {
       final url = Uri.parse('$baseUrl$endpoint');
       debugPrint('🌐 GET $url');
 
-      final response = await httpClient.get(url, headers: _headers);
+      // Verify token is set for authenticated endpoints
+      if (_authToken == null && !endpoint.contains('/auth/')) {
+        debugPrint('❌ CRITICAL: No auth token set for authenticated endpoint!');
+        debugPrint('   Endpoint: $endpoint');
+        debugPrint('   This request will likely fail with 401 Unauthorized');
+        debugPrint('   ');
+        debugPrint(
+          '   🔧 Try logging out and logging back in to refresh token',
+        );
+      } else if (_authToken != null) {
+        debugPrint('✅ Auth token present (${_authToken!.length} chars)');
+        debugPrint(
+          '   Token preview: ${_authToken!.substring(0, _authToken!.length > 30 ? 30 : _authToken!.length)}...',
+        );
+      }
+
+      // Debug: Show the actual headers being sent
+      final headers = _headers;
+      debugPrint('📤 Request headers:');
+      headers.forEach((key, value) {
+        if (key == 'Authorization') {
+          debugPrint(
+            '   $key: ${value.substring(0, value.length > 50 ? 50 : value.length)}...',
+          );
+        } else {
+          debugPrint('   $key: $value');
+        }
+      });
+
+      final response = await httpClient.get(url, headers: headers);
 
       return _handleResponse(response);
     } catch (e) {
       debugPrint('❌ API GET error: $e');
+
+      // Check if it's an auth error
+      if (e.toString().contains('Unauthorized') ||
+          e.toString().contains('401')) {
+        debugPrint('   ');
+        debugPrint('   🚨 AUTHENTICATION ERROR DETECTED');
+        debugPrint('   Possible causes:');
+        debugPrint('   1. Token has expired');
+        debugPrint('   2. Token was not set after login');
+        debugPrint('   3. Backend rejected the token');
+        debugPrint('   ');
+        debugPrint('   💡 SOLUTION: Logout and login again');
+      }
+
       throw ApiException('GET request failed: $e');
     }
   }

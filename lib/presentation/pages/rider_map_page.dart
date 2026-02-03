@@ -854,20 +854,56 @@ class _RiderMapPageState extends State<RiderMapPage> {
     if (trackingState is RiderTrackingError) {
       return Container(
         margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.red[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.red[300]!),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.error_outline, color: Colors.red[700], size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                trackingState.message,
-                style: TextStyle(color: Colors.red[900], fontSize: 13),
+            Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red[700], size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Assignment Error',
+                    style: TextStyle(
+                      color: Colors.red[900],
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              trackingState.message,
+              style: TextStyle(color: Colors.red[800], fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Retry fetching assignment
+                  context.read<RiderTrackingBloc>().add(
+                    StartTracking(widget.rider),
+                  );
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
           ],

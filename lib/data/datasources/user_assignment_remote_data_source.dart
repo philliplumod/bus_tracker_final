@@ -34,13 +34,27 @@ class UserAssignmentRemoteDataSourceImpl
         debugPrint('   Bus: ${assignment.busName}');
         debugPrint('   Route: ${assignment.routeName}');
       } else {
-        debugPrint('⚠️ No assignment found for user $userId');
+        debugPrint('⚠️ No assignment found for user $userId in database');
+        debugPrint('   This user may not be assigned to any bus/route yet');
       }
 
       return assignment;
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('❌ Failed to fetch user assignment from API: $e');
-      throw Exception('Failed to fetch user assignment: $e');
+      // Re-throw with more context
+      if (e.toString().contains('Unauthorized') ||
+          e.toString().contains('401')) {
+        throw Exception(
+          'Authentication failed. Please check network connection and try logging in again.',
+        );
+      } else if (e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup')) {
+        throw Exception(
+          'Cannot connect to server. Make sure backend is running and network is configured.',
+        );
+      } else {
+        throw Exception('Failed to fetch user assignment: $e');
+      }
     }
   }
 

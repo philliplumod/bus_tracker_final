@@ -126,11 +126,26 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
         try {
           final prefs = await SharedPreferences.getInstance();
           final token = prefs.getString('access_token');
+          debugPrint('🔍 Checking for access token in SharedPreferences...');
           if (token != null) {
+            debugPrint('✅ Token found: ${token.length} chars');
             apiClient.setAuthToken(token);
             debugPrint('🔑 API token set for user: ${user.email}');
+
+            // Verify token was set
+            final currentToken = apiClient.getCurrentToken();
+            if (currentToken != null) {
+              debugPrint('✅ Verified: Token is now set in ApiClient');
+            } else {
+              debugPrint(
+                '❌ ERROR: Token not set in ApiClient despite calling setAuthToken!',
+              );
+            }
           } else {
-            debugPrint('⚠️ No access token found after login');
+            debugPrint(
+              '❌ CRITICAL: No access token found in SharedPreferences after login!',
+            );
+            debugPrint('   Available keys: ${prefs.getKeys()}');
           }
         } catch (e) {
           debugPrint('❌ Failed to set API token: $e');
