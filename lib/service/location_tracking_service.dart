@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -42,9 +43,9 @@ class LocationTrackingService {
     }
 
     debugPrint('🚀 Starting location tracking for rider: ${rider.name}');
-    debugPrint('   Bus: ${assignment.busName} (${assignment.busId})');
-    debugPrint('   Route: ${assignment.routeName} (${assignment.routeId})');
-    debugPrint('   Assignment: ${assignment.id}');
+    debugPrint('   Bus: ${assignment.busName} (ID: ${assignment.busId})');
+    debugPrint('   Route: ${assignment.routeName} (ID: ${assignment.routeId})');
+    debugPrint('   Assignment ID: ${assignment.id}');
 
     // Start periodic updates every 2 seconds
     _trackingTimer = Timer.periodic(_updateInterval, (_) => _captureLocation());
@@ -96,8 +97,15 @@ class LocationTrackingService {
 
       final update = RiderLocationUpdate(
         userId: _currentRider!.id,
-        busId: _currentAssignment!.busId,
-        routeId: _currentAssignment!.routeId,
+        userName: _currentRider!.name,
+        busName:
+            _currentAssignment!.busName ??
+            _currentRider!.busName ??
+            'Unknown Bus',
+        routeName:
+            _currentAssignment!.routeName ??
+            _currentRider!.assignedRoute ??
+            'Unknown Route',
         busRouteAssignmentId: _currentAssignment!.id,
         latitude: position.latitude,
         longitude: position.longitude,
@@ -106,9 +114,14 @@ class LocationTrackingService {
         timestamp: DateTime.now(),
         accuracy: position.accuracy >= 0 ? position.accuracy : null,
         altitude: position.altitude,
-        destinationTerminalId: _currentAssignment!.destinationTerminalId,
+        destinationTerminal: _currentRider!.destinationTerminal,
         estimatedDurationMinutes: estimatedDuration,
       );
+
+      debugPrint('📍 Creating location update:');
+      debugPrint('   User: ${update.userName}');
+      debugPrint('   Bus: ${update.busName}');
+      debugPrint('   Route: ${update.routeName}');
 
       // Write to Firebase
       await _writeToFirebase(update);
@@ -131,14 +144,16 @@ class LocationTrackingService {
   /// Write location update to Firebase Realtime Database
   Future<void> _writeToFirebase(RiderLocationUpdate update) async {
     try {
-      // Structure: /buses/{busId}/location/{userId}
-      final path = 'buses/${update.busId}/location/${update.userId}';
+      // Structure: /riders/{userId}/location
+      final path = 'riders/${update.userId}/location';
 
       final data = {
         'userId': update.userId,
-        'busId': update.busId,
-        'routeId': update.routeId,
+        'userName': update.userName,
+        'busName': update.busName,
+        'routeName': update.routeName,
         'busRouteAssignmentId': update.busRouteAssignmentId,
+        'destinationTerminal': update.destinationTerminal,
         'latitude': update.latitude,
         'longitude': update.longitude,
         'speed': update.speed,

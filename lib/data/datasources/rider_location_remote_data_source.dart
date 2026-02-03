@@ -15,7 +15,7 @@ abstract class RiderLocationRemoteDataSource {
   });
 
   /// Watch real-time location updates for a specific bus
-  Stream<RiderLocationUpdateModel?> watchBusLocation(String busId);
+  Stream<RiderLocationUpdateModel?> watchBusLocation(String busName);
 }
 
 class RiderLocationRemoteDataSourceImpl
@@ -28,33 +28,36 @@ class RiderLocationRemoteDataSourceImpl
   @override
   Future<void> storeLocationUpdate(RiderLocationUpdateModel update) async {
     try {
-      // Store in bus location path: buses/{busId}/location/{timestamp}
-      final busLocationRef = _dbRef
-          .child('buses')
-          .child(update.busId)
+      // Store in rider location path: riders/{userId}/location/{timestamp}
+      final riderLocationRef = _dbRef
+          .child('riders')
+          .child(update.userId)
           .child('location')
           .child(update.timestamp.millisecondsSinceEpoch.toString());
 
       // Store location data
-      await busLocationRef.set(update.toFirebaseJson());
+      await riderLocationRef.set(update.toFirebaseJson());
 
-      // Also store metadata at bus level
-      await _dbRef.child('buses').child(update.busId).update({
-        'busNumber': update.busId,
-        'route': update.routeId,
+      // Also store latest location at rider level for quick access
+      await _dbRef.child('riders').child(update.userId).update({
+        'userName': update.userName,
+        'busName': update.busName,
+        'routeName': update.routeName,
         'lastUpdate': update.timestamp.toIso8601String(),
       });
 
-      // Store in rider tracking path: rider_tracking/{userId}/{timestamp}
-      final riderTrackingRef = _dbRef
-          .child('rider_tracking')
+      // Store in bus tracking path: buses/{busName}/riders/{userId}/{timestamp}
+      final busTrackingRef = _dbRef
+          .child('buses')
+          .child(update.busName)
+          .child('riders')
           .child(update.userId)
           .child(update.timestamp.millisecondsSinceEpoch.toString());
 
-      await riderTrackingRef.set(update.toJson());
+      await busTrackingRef.set(update.toJson());
 
       debugPrint(
-        '✅ Location update stored in Firebase for bus: ${update.busId}',
+        '✅ Location update stored in Firebase for rider: ${update.userName} on bus: ${update.busName}',
       );
     } catch (e) {
       debugPrint('❌ Error storing location update: $e');
@@ -117,8 +120,8 @@ class RiderLocationRemoteDataSourceImpl
   }
 
   @override
-  Stream<RiderLocationUpdateModel?> watchBusLocation(String busId) {
-    return _dbRef.child('buses').child(busId).child('location').onValue.map((
+  Stream<RiderLocationUpdateModel?> watchBusLocation(String busName) {
+    return _dbRef.child('buses').child(busName).child('riders').onValue.map((
       event,
     ) {
       final snapshot = event.snapshot;
@@ -129,26 +132,38 @@ class RiderLocationRemoteDataSourceImpl
 
       final locationData = snapshot.value as Map<Object?, Object?>;
 
-      // Get the most recent timestamp entry
+      // Get the most recent timestamp entry from all riders
       String? latestTimestamp;
       Map<Object?, Object?>? latestData;
 
-      locationData.forEach((timestampKey, timestampData) {
-        if (timestampData is Map) {
-          final timestampStr = timestampKey.toString();
-          if (latestTimestamp == null ||
-              timestampStr.compareTo(latestTimestamp!) > 0) {
-            latestTimestamp = timestampStr;
-            latestData = timestampData as Map<Object?, Object?>;
-          }
+      locationData.forEach((userKey, userData) {
+        if (userData is Map) {
+          (userData as Map<Object?, Object?>).forEach((
+            timestampKey,
+            timestampData,
+          ) {
+            if (timestampData is Map) {
+              final timestampStr = timestampKey.toString();
+              if (latestTimestamp == null ||
+                  timestampStr.compareTo(latestTimestamp!) > 0) {
+                latestTimestamp = timestampStr;
+                latestData = timestampData as Map<Object?, Object?>;
+              }
+            }
+          });
         }
       });
 
       if (latestData == null) return null;
 
-      // Note: This is a simplified version. For full updates,
-      // you'd need to store more metadata at the bus level
-      return null;
+      try {
+        return RiderLocationUpdateModel.fromJson(
+          Map<String, dynamic>.from(latestData!),
+        );
+      } catch (e) {
+        debugPrint('Error parsing location update: $e');
+        return null;
+      }
     });
   }
 }

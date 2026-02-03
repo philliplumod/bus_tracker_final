@@ -3,9 +3,10 @@ import 'package:equatable/equatable.dart';
 /// Represents a rider's location update with complete tracking information
 class RiderLocationUpdate extends Equatable {
   final String userId;
-  final String busId;
-  final String routeId;
-  final String busRouteAssignmentId;
+  final String userName;
+  final String busName;
+  final String routeName;
+  final String? busRouteAssignmentId;
   final double latitude;
   final double longitude;
   final double speed; // km/h
@@ -13,14 +14,15 @@ class RiderLocationUpdate extends Equatable {
   final DateTime timestamp;
   final double? accuracy; // meters
   final double? altitude; // meters
-  final String? destinationTerminalId;
+  final String? destinationTerminal;
   final double? estimatedDurationMinutes; // to destination
 
   const RiderLocationUpdate({
     required this.userId,
-    required this.busId,
-    required this.routeId,
-    required this.busRouteAssignmentId,
+    required this.userName,
+    required this.busName,
+    required this.routeName,
+    this.busRouteAssignmentId,
     required this.latitude,
     required this.longitude,
     required this.speed,
@@ -28,15 +30,16 @@ class RiderLocationUpdate extends Equatable {
     required this.timestamp,
     this.accuracy,
     this.altitude,
-    this.destinationTerminalId,
+    this.destinationTerminal,
     this.estimatedDurationMinutes,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'userId': userId,
-      'busId': busId,
-      'routeId': routeId,
+      'userName': userName,
+      'busName': busName,
+      'routeName': routeName,
       'busRouteAssignmentId': busRouteAssignmentId,
       'latitude': latitude,
       'longitude': longitude,
@@ -45,7 +48,7 @@ class RiderLocationUpdate extends Equatable {
       'timestamp': timestamp.toIso8601String(),
       'accuracy': accuracy,
       'altitude': altitude,
-      'destinationTerminalId': destinationTerminalId,
+      'destinationTerminal': destinationTerminal,
       'estimatedDurationMinutes': estimatedDurationMinutes,
     };
   }
@@ -66,9 +69,10 @@ class RiderLocationUpdate extends Equatable {
   factory RiderLocationUpdate.fromJson(Map<String, dynamic> json) {
     return RiderLocationUpdate(
       userId: json['userId'] as String,
-      busId: json['busId'] as String,
-      routeId: json['routeId'] as String,
-      busRouteAssignmentId: json['busRouteAssignmentId'] as String,
+      userName: json['userName'] as String,
+      busName: json['busName'] as String,
+      routeName: json['routeName'] as String,
+      busRouteAssignmentId: json['busRouteAssignmentId'] as String?,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       speed: (json['speed'] as num).toDouble(),
@@ -82,7 +86,7 @@ class RiderLocationUpdate extends Equatable {
           json['altitude'] != null
               ? (json['altitude'] as num).toDouble()
               : null,
-      destinationTerminalId: json['destinationTerminalId'] as String?,
+      destinationTerminal: json['destinationTerminal'] as String?,
       estimatedDurationMinutes:
           json['estimatedDurationMinutes'] != null
               ? (json['estimatedDurationMinutes'] as num).toDouble()
@@ -92,8 +96,9 @@ class RiderLocationUpdate extends Equatable {
 
   RiderLocationUpdate copyWith({
     String? userId,
-    String? busId,
-    String? routeId,
+    String? userName,
+    String? busName,
+    String? routeName,
     String? busRouteAssignmentId,
     double? latitude,
     double? longitude,
@@ -102,13 +107,14 @@ class RiderLocationUpdate extends Equatable {
     DateTime? timestamp,
     double? accuracy,
     double? altitude,
-    String? destinationTerminalId,
+    String? destinationTerminal,
     double? estimatedDurationMinutes,
   }) {
     return RiderLocationUpdate(
       userId: userId ?? this.userId,
-      busId: busId ?? this.busId,
-      routeId: routeId ?? this.routeId,
+      userName: userName ?? this.userName,
+      busName: busName ?? this.busName,
+      routeName: routeName ?? this.routeName,
       busRouteAssignmentId: busRouteAssignmentId ?? this.busRouteAssignmentId,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
@@ -117,8 +123,7 @@ class RiderLocationUpdate extends Equatable {
       timestamp: timestamp ?? this.timestamp,
       accuracy: accuracy ?? this.accuracy,
       altitude: altitude ?? this.altitude,
-      destinationTerminalId:
-          destinationTerminalId ?? this.destinationTerminalId,
+      destinationTerminal: destinationTerminal ?? this.destinationTerminal,
       estimatedDurationMinutes:
           estimatedDurationMinutes ?? this.estimatedDurationMinutes,
     );
@@ -127,8 +132,9 @@ class RiderLocationUpdate extends Equatable {
   @override
   List<Object?> get props => [
     userId,
-    busId,
-    routeId,
+    userName,
+    busName,
+    routeName,
     busRouteAssignmentId,
     latitude,
     longitude,
@@ -137,7 +143,7 @@ class RiderLocationUpdate extends Equatable {
     timestamp,
     accuracy,
     altitude,
-    destinationTerminalId,
+    destinationTerminal,
     estimatedDurationMinutes,
   ];
 }

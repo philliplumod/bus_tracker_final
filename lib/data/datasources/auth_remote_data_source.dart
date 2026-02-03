@@ -69,9 +69,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final user = UserModel.fromJson(data['user']);
 
-        debugPrint('✅ Login successful for user: ${user.email} (${user.role})');
+        // Handle both 'user' and 'profile' response formats
+        final userData = data['user'] ?? data['profile'];
+        if (userData == null) {
+          throw Exception('No user or profile data in response');
+        }
+
+        final user = UserModel.fromJson(userData);
+
+        debugPrint('✅ Login successful for user: ${user.email} (${user.role}');
+        debugPrint('   Bus: ${user.busName} (${user.busId})');
+        debugPrint('   Route: ${user.assignedRoute} (${user.routeId})');
+        debugPrint('   Assignment ID: ${user.busRouteId}');
 
         // Store tokens if provided
         if (data.containsKey('accessToken')) {
@@ -93,6 +103,57 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         }
         if (user.busName != null) {
           await prefs.setString('user_bus_name', user.busName!);
+        }
+        if (user.busId != null) {
+          await prefs.setString('user_bus_id', user.busId!);
+        }
+        if (user.routeId != null) {
+          await prefs.setString('user_route_id', user.routeId!);
+        }
+        if (user.busRouteId != null) {
+          await prefs.setString('user_bus_route_id', user.busRouteId!);
+        }
+        if (user.startingTerminal != null) {
+          await prefs.setString(
+            'user_starting_terminal',
+            user.startingTerminal!,
+          );
+        }
+        if (user.destinationTerminal != null) {
+          await prefs.setString(
+            'user_destination_terminal',
+            user.destinationTerminal!,
+          );
+        }
+        if (user.startingTerminalLat != null) {
+          await prefs.setDouble(
+            'user_starting_terminal_lat',
+            user.startingTerminalLat!,
+          );
+        }
+        if (user.startingTerminalLng != null) {
+          await prefs.setDouble(
+            'user_starting_terminal_lng',
+            user.startingTerminalLng!,
+          );
+        }
+        if (user.destinationTerminalLat != null) {
+          await prefs.setDouble(
+            'user_destination_terminal_lat',
+            user.destinationTerminalLat!,
+          );
+        }
+        if (user.destinationTerminalLng != null) {
+          await prefs.setDouble(
+            'user_destination_terminal_lng',
+            user.destinationTerminalLng!,
+          );
+        }
+        if (user.assignedAt != null) {
+          await prefs.setString(
+            'user_assigned_at',
+            user.assignedAt!.toIso8601String(),
+          );
         }
 
         debugPrint('💾 User data stored in SharedPreferences');
@@ -310,6 +371,57 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             if (user.busName != null) {
               await prefs.setString('user_bus_name', user.busName!);
             }
+            if (user.busId != null) {
+              await prefs.setString('user_bus_id', user.busId!);
+            }
+            if (user.routeId != null) {
+              await prefs.setString('user_route_id', user.routeId!);
+            }
+            if (user.busRouteId != null) {
+              await prefs.setString('user_bus_route_id', user.busRouteId!);
+            }
+            if (user.startingTerminal != null) {
+              await prefs.setString(
+                'user_starting_terminal',
+                user.startingTerminal!,
+              );
+            }
+            if (user.destinationTerminal != null) {
+              await prefs.setString(
+                'user_destination_terminal',
+                user.destinationTerminal!,
+              );
+            }
+            if (user.startingTerminalLat != null) {
+              await prefs.setDouble(
+                'user_starting_terminal_lat',
+                user.startingTerminalLat!,
+              );
+            }
+            if (user.startingTerminalLng != null) {
+              await prefs.setDouble(
+                'user_starting_terminal_lng',
+                user.startingTerminalLng!,
+              );
+            }
+            if (user.destinationTerminalLat != null) {
+              await prefs.setDouble(
+                'user_destination_terminal_lat',
+                user.destinationTerminalLat!,
+              );
+            }
+            if (user.destinationTerminalLng != null) {
+              await prefs.setDouble(
+                'user_destination_terminal_lng',
+                user.destinationTerminalLng!,
+              );
+            }
+            if (user.assignedAt != null) {
+              await prefs.setString(
+                'user_assigned_at',
+                user.assignedAt!.toIso8601String(),
+              );
+            }
 
             return user;
           }
@@ -337,6 +449,23 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         role: _roleFromString(roleString),
         assignedRoute: prefs.getString('user_assigned_route'),
         busName: prefs.getString('user_bus_name'),
+        busId: prefs.getString('user_bus_id'),
+        routeId: prefs.getString('user_route_id'),
+        busRouteId: prefs.getString('user_bus_route_id'),
+        startingTerminal: prefs.getString('user_starting_terminal'),
+        destinationTerminal: prefs.getString('user_destination_terminal'),
+        startingTerminalLat: prefs.getDouble('user_starting_terminal_lat'),
+        startingTerminalLng: prefs.getDouble('user_starting_terminal_lng'),
+        destinationTerminalLat: prefs.getDouble(
+          'user_destination_terminal_lat',
+        ),
+        destinationTerminalLng: prefs.getDouble(
+          'user_destination_terminal_lng',
+        ),
+        assignedAt:
+            prefs.getString('user_assigned_at') != null
+                ? DateTime.parse(prefs.getString('user_assigned_at')!)
+                : null,
       );
     } catch (e) {
       return null;

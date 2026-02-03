@@ -28,18 +28,29 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
   ) async {
     try {
       debugPrint('🚀 Starting rider tracking for: ${event.rider.name}');
+      debugPrint('   Bus: ${event.rider.busName}');
+      debugPrint('   Route: ${event.rider.assignedRoute}');
 
       // Fetch UserAssignment from backend for this rider
       // For now, create a temporary assignment from rider data
+      // Use the actual IDs from the rider user object
       final tempAssignment = UserAssignment(
-        id: event.rider.busRouteId ?? 'unknown',
+        id: event.rider.busRouteId ?? event.rider.id,
         userId: event.rider.id,
-        busRouteId: event.rider.busRouteId ?? 'unknown',
-        busId: event.rider.busId ?? 'unknown',
+        busRouteId: event.rider.busRouteId ?? event.rider.id,
+        busId: event.rider.busId ?? event.rider.id,
         busName: event.rider.busName,
-        routeId: event.rider.routeId ?? 'unknown',
+        routeId: event.rider.routeId ?? event.rider.id,
+        routeName: event.rider.assignedRoute,
         assignedAt: event.rider.assignedAt,
       );
+
+      debugPrint('📋 Assignment created:');
+      debugPrint('   Bus Name: ${tempAssignment.busName}');
+      debugPrint('   Route Name: ${tempAssignment.routeName}');
+      debugPrint('   Bus ID: ${tempAssignment.busId}');
+      debugPrint('   Route ID: ${tempAssignment.routeId}');
+      debugPrint('   Assignment ID: ${tempAssignment.busRouteId}');
 
       // Start the location tracking service with assignment
       await locationService.startTracking(event.rider, tempAssignment);

@@ -10,6 +10,7 @@ class UserModel extends User {
     super.busName,
     super.busId,
     super.routeId,
+    super.busRouteId,
     super.startingTerminal,
     super.destinationTerminal,
     super.startingTerminalLat,
@@ -21,14 +22,15 @@ class UserModel extends User {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as String,
+      id: json['id'] ?? json['userId'] as String,
       email: json['email'] as String,
       name: json['name'] as String,
       role: _roleFromString(json['role'] as String),
-      assignedRoute: json['assignedRoute'] as String?,
+      assignedRoute: json['assignedRoute'] ?? json['routeName'] as String?,
       busName: json['busName'] as String?,
       busId: json['busId'] as String?,
       routeId: json['routeId'] as String?,
+      busRouteId: json['busRouteId'] ?? json['assignmentId'] as String?,
       startingTerminal: json['startingTerminal'] as String?,
       destinationTerminal: json['destinationTerminal'] as String?,
       startingTerminalLat:
@@ -65,6 +67,7 @@ class UserModel extends User {
       'busName': busName,
       'busId': busId,
       'routeId': routeId,
+      'busRouteId': busRouteId,
       'startingTerminal': startingTerminal,
       'destinationTerminal': destinationTerminal,
       'startingTerminalLat': startingTerminalLat,
