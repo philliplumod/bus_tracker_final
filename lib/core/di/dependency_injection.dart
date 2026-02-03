@@ -9,16 +9,20 @@ import '../../data/datasources/bus_local_data_source.dart';
 import '../../data/datasources/app_preferences_data_source.dart';
 import '../../data/datasources/favorites_local_data_source.dart';
 import '../../data/datasources/recent_searches_data_source.dart';
+import '../../data/datasources/rider_location_remote_data_source.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../data/repositories/bus_repository_impl.dart';
 import '../../data/repositories/location_repository_impl.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/recent_searches_repository_impl.dart';
+import '../../data/repositories/rider_location_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/bus_repository.dart';
 import '../../domain/repositories/location_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
 import '../../domain/repositories/recent_searches_repository.dart';
+import '../../domain/repositories/rider_location_repository.dart';
+import '../../service/location_tracking_service.dart';
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/get_nearby_buses.dart';
 import '../../domain/usecases/get_user_location.dart';
@@ -33,6 +37,8 @@ import '../../domain/usecases/is_favorite.dart';
 import '../../domain/usecases/get_recent_searches.dart';
 import '../../domain/usecases/add_recent_search.dart';
 import '../../domain/usecases/remove_recent_search.dart';
+import '../../domain/usecases/store_rider_location.dart';
+import '../../domain/usecases/get_rider_location_history.dart';
 import '../../presentation/bloc/auth/auth_bloc.dart';
 import '../../presentation/bloc/auth/auth_event.dart';
 import '../../presentation/bloc/map/map_bloc.dart';
@@ -40,12 +46,14 @@ import '../../presentation/bloc/bus_search/bus_search_bloc.dart';
 import '../../presentation/bloc/trip_solution/trip_solution_bloc.dart';
 import '../../presentation/cubit/favorites_cubit.dart';
 import '../../presentation/cubit/recent_searches_cubit.dart';
+import '../../presentation/bloc/rider_tracking/rider_tracking_bloc.dart';
 import '../../theme/theme_cubit.dart';
 
 class DependencyInjection {
   // Data Sources - Remote
   static late final AuthRemoteDataSource authRemoteDataSource;
   static late final BusRemoteDataSource busRemoteDataSource;
+  static late final RiderLocationRemoteDataSource riderLocationRemoteDataSource;
 
   // Data Sources - Local
   static late final LocationLocalDataSource locationLocalDataSource;
@@ -54,12 +62,16 @@ class DependencyInjection {
   static late final FavoritesLocalDataSource favoritesLocalDataSource;
   static late final RecentSearchesDataSource recentSearchesDataSource;
 
+  // Services
+  static late final LocationTrackingService locationTrackingService;
+
   // Repositories
   static late final AuthRepository authRepository;
   static late final BusRepository busRepository;
   static late final LocationRepository locationRepository;
   static late final FavoritesRepository favoritesRepository;
   static late final RecentSearchesRepository recentSearchesRepository;
+  static late final RiderLocationRepository riderLocationRepository;
 
   // Use Cases
   static late final SignIn signIn;
@@ -76,6 +88,8 @@ class DependencyInjection {
   static late final GetRecentSearches getRecentSearches;
   static late final AddRecentSearch addRecentSearch;
   static late final RemoveRecentSearch removeRecentSearch;
+  static late final StoreRiderLocation storeRiderLocation;
+  static late final GetRiderLocationHistory getRiderLocationHistory;
 
   static Future<void> init() async {
     // Initialize SharedPreferences
@@ -89,6 +103,9 @@ class DependencyInjection {
     busRemoteDataSource = BusRemoteDataSourceImpl(
       busRef: FirebaseDatabase.instance.ref(),
     );
+    riderLocationRemoteDataSource = RiderLocationRemoteDataSourceImpl(
+      dbRef: FirebaseDatabase.instance.ref(),
+    );
 
     // Initialize local data sources
     locationLocalDataSource = LocationLocalDataSourceImpl();
@@ -96,6 +113,9 @@ class DependencyInjection {
     appPreferencesDataSource = AppPreferencesDataSourceImpl(prefs: prefs);
     favoritesLocalDataSource = FavoritesLocalDataSourceImpl(prefs: prefs);
     recentSearchesDataSource = RecentSearchesDataSourceImpl(prefs: prefs);
+
+    // Initialize services
+    locationTrackingService = LocationTrackingService();
 
     // Initialize repositories
     authRepository = AuthRepositoryImpl(remoteDataSource: authRemoteDataSource);
@@ -108,6 +128,9 @@ class DependencyInjection {
     );
     recentSearchesRepository = RecentSearchesRepositoryImpl(
       dataSource: recentSearchesDataSource,
+    );
+    riderLocationRepository = RiderLocationRepositoryImpl(
+      remoteDataSource: riderLocationRemoteDataSource,
     );
 
     // Initialize use cases
@@ -125,6 +148,8 @@ class DependencyInjection {
     getRecentSearches = GetRecentSearches(recentSearchesRepository);
     addRecentSearch = AddRecentSearch(recentSearchesRepository);
     removeRecentSearch = RemoveRecentSearch(recentSearchesRepository);
+    storeRiderLocation = StoreRiderLocation(riderLocationRepository);
+    getRiderLocationHistory = GetRiderLocationHistory(riderLocationRepository);
   }
 
   static List<BlocProvider> get providers => [
@@ -171,6 +196,13 @@ class DependencyInjection {
             getRecentSearchesUseCase: getRecentSearches,
             addRecentSearchUseCase: addRecentSearch,
             removeRecentSearchUseCase: removeRecentSearch,
+          ),
+    ),
+    BlocProvider<RiderTrackingBloc>(
+      create:
+          (_) => RiderTrackingBloc(
+            locationService: locationTrackingService,
+            storeRiderLocation: storeRiderLocation,
           ),
     ),
   ];

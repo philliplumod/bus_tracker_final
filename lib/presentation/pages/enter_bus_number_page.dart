@@ -4,6 +4,7 @@ import '../bloc/bus_search/bus_search_bloc.dart';
 import '../bloc/bus_search/bus_search_event.dart';
 import '../bloc/bus_search/bus_search_state.dart';
 import 'bus_route_page.dart';
+import 'dart:async';
 
 class EnterBusNumberPage extends StatefulWidget {
   const EnterBusNumberPage({super.key});
@@ -14,20 +15,37 @@ class EnterBusNumberPage extends StatefulWidget {
 
 class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
   final TextEditingController _busNumberController = TextEditingController();
+  Timer? _refreshTimer;
+  BusSearchBloc? _busSearchBloc;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Save reference to bloc early in lifecycle
+    _busSearchBloc ??= context.read<BusSearchBloc>();
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<BusSearchBloc>().add(LoadAllBuses());
+      if (mounted && _busSearchBloc != null) {
+        _busSearchBloc!.add(LoadAllBuses());
+        // Auto-refresh bus data every 10 seconds for real-time updates
+        _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+          if (mounted && _busSearchBloc != null) {
+            _busSearchBloc!.add(LoadAllBuses());
+          }
+        });
       }
     });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _busNumberController.dispose();
+    _busSearchBloc = null;
     super.dispose();
   }
 
@@ -102,7 +120,38 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                // Live update indicator
+                if (state is BusSearchLoaded)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    color: Colors.green[50],
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Live tracking • ${state.allBuses.length} bus(es) online • Updates every 10s',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 4),
                 Expanded(child: _buildResultsList(state)),
               ],
             ),
@@ -190,39 +239,119 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
       itemCount: state.filteredBuses.length,
       itemBuilder: (context, index) {
         final bus = state.filteredBuses[index];
+        final isMoving = bus.speed > 1.0;
+
         return Card(
-          margin: const EdgeInsets.only(bottom: 6),
+          margin: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
+          elevation: 2,
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 12,
-              vertical: 4,
+              vertical: 8,
             ),
-            leading: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.directions_bus,
-                color: Colors.white,
-                size: 20,
-              ),
+            leading: Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isMoving ? Colors.green : Colors.orange,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.directions_bus,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                if (isMoving)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            title: Text(
-              bus.busNumber != null ? 'Bus ${bus.busNumber}' : 'Bus ${bus.id}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            title: Row(
+              children: [
+                Text(
+                  bus.busNumber != null
+                      ? 'Bus ${bus.busNumber}'
+                      : 'Bus ${bus.id}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (isMoving)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'MOVING',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[800],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (bus.route != null)
-                  Text('Route: ${bus.route}')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Route: ${bus.route}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )
                 else
-                  const Text('Route: Not specified'),
-                Text(
-                  'Speed: ${bus.speed.toStringAsFixed(1)} km/h',
-                  style: const TextStyle(fontSize: 12),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Route: Not specified',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.speed, size: 14, color: Colors.grey[700]),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${bus.speed.toStringAsFixed(1)} km/h',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    if (bus.direction != null) ...[
+                      const SizedBox(width: 12),
+                      Icon(Icons.explore, size: 14, color: Colors.blue[700]),
+                      const SizedBox(width: 4),
+                      Text(
+                        bus.direction!,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),

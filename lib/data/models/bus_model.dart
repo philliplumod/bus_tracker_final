@@ -12,6 +12,7 @@ class BusModel extends Bus {
     required super.timestamp,
     super.distanceFromUser,
     super.eta,
+    super.direction,
   });
 
   factory BusModel.fromFirebase(
@@ -21,18 +22,26 @@ class BusModel extends Bus {
     String? busNumber,
     String? route,
   ) {
-    final payload = Map<String, dynamic>.from(
-      data.values.first as Map<String, dynamic>,
-    );
+    // Support both old format (lat/lng/alt/speed) and new format (latitude/longitude/speed/heading)
     return BusModel(
       id: busId,
       busNumber: busNumber,
       route: route,
-      latitude: (payload['lat'] as num?)?.toDouble() ?? 0.0,
-      longitude: (payload['lng'] as num?)?.toDouble() ?? 0.0,
-      altitude: (payload['alt'] as num?)?.toDouble() ?? 0.0,
-      speed: (payload['speed'] as num?)?.toDouble() ?? 0.0,
-      timestamp: payload['timestamp'] as String? ?? timestampKey,
+      latitude:
+          (data['latitude'] as num?)?.toDouble() ??
+          (data['lat'] as num?)?.toDouble() ??
+          0.0,
+      longitude:
+          (data['longitude'] as num?)?.toDouble() ??
+          (data['lng'] as num?)?.toDouble() ??
+          0.0,
+      altitude:
+          (data['altitude'] as num?)?.toDouble() ??
+          (data['alt'] as num?)?.toDouble() ??
+          0.0,
+      speed: (data['speed'] as num?)?.toDouble() ?? 0.0,
+      timestamp: timestampKey,
+      direction: (data['heading'] as num?)?.toDouble().toString(),
     );
   }
 
@@ -59,6 +68,7 @@ class BusModel extends Bus {
       timestamp: timestamp,
       distanceFromUser: distanceFromUser ?? this.distanceFromUser,
       eta: eta ?? this.eta,
+      direction: direction,
     );
   }
 }

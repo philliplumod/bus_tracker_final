@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/utils/distance_calculator.dart';
+import '../../core/utils/eta_service.dart';
 import '../bloc/trip_solution/trip_solution_bloc.dart';
 import '../bloc/trip_solution/trip_solution_event.dart';
 import '../bloc/trip_solution/trip_solution_state.dart';
 import 'bus_route_page.dart';
+import 'dart:async';
 
 class TripSolutionPage extends StatefulWidget {
   const TripSolutionPage({super.key});
@@ -15,6 +17,7 @@ class TripSolutionPage extends StatefulWidget {
 
 class _TripSolutionPageState extends State<TripSolutionPage> {
   final TextEditingController _destinationController = TextEditingController();
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -22,12 +25,19 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<TripSolutionBloc>().add(LoadTripSolutionData());
+        // Auto-refresh bus data every 10 seconds for real-time updates
+        _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+          if (mounted) {
+            context.read<TripSolutionBloc>().add(LoadTripSolutionData());
+          }
+        });
       }
     });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _destinationController.dispose();
     super.dispose();
   }
@@ -95,6 +105,35 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
 
           return Column(
             children: [
+              // Live update indicator
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                color: Colors.green[50],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Live bus tracking • Updates every 10s',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               // Search section
               Card(
                 margin: const EdgeInsets.all(12),
@@ -243,42 +282,170 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
                 bus.longitude,
               );
 
+              // Calculate ETA to user's location using actual bus speed
+              String etaToUser = 'Calculating...';
+              if (bus.speed > 0) {
+                final etaMinutes = (distanceFromUser / bus.speed) * 60;
+                etaToUser = ETAService.formatETA(etaMinutes);
+              } else {
+                // Use average speed if bus is stationary
+                final etaMinutes = (distanceFromUser / 30) * 60;
+                etaToUser = '~${ETAService.formatETA(etaMinutes)}';
+              }
+
+              // Calculate travel time from user to destination
+              String travelTime = 'Unknown';
+              if (state.destinationCoordinates != null) {
+                final distanceToDestination = DistanceCalculator.calculate(
+                  state.userLocation.latitude,
+                  state.userLocation.longitude,
+                  state.destinationCoordinates!.latitude,
+                  state.destinationCoordinates!.longitude,
+                );
+                final travelMinutes =
+                    (distanceToDestination / 30) * 60; // Average bus speed
+                travelTime = ETAService.formatETA(travelMinutes);
+              }
+
+              final isMoving =
+                  bus.speed > 1.0; // Consider moving if speed > 1 km/h
+
               return Card(
-                margin: const EdgeInsets.only(bottom: 6),
+                margin: const EdgeInsets.only(bottom: 8),
+                elevation: 2,
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 4,
+                    vertical: 8,
                   ),
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.directions_bus,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                  leading: Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isMoving ? Colors.green : Colors.orange,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.directions_bus,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      if (isMoving)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  title: Text(
-                    bus.busNumber != null
-                        ? 'Bus ${bus.busNumber}'
-                        : 'Bus ${bus.id}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  title: Row(
+                    children: [
+                      Text(
+                        bus.busNumber != null
+                            ? 'Bus ${bus.busNumber}'
+                            : 'Bus ${bus.id}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (isMoving)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'MOVING',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green[800],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (bus.route != null) Text('Route: ${bus.route}'),
-                      Text(
-                        'Distance: ${distanceFromUser.toStringAsFixed(2)} km away',
-                        style: const TextStyle(fontSize: 12),
+                      if (bus.route != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Route: ${bus.route}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Colors.blue[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${distanceFromUser.toStringAsFixed(2)} km away',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.orange[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'ETA: $etaToUser',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Speed: ${bus.speed.toStringAsFixed(1)} km/h',
-                        style: const TextStyle(fontSize: 12),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.speed, size: 14, color: Colors.grey[700]),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${bus.speed.toStringAsFixed(1)} km/h',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          if (state.destinationCoordinates != null) ...[
+                            const SizedBox(width: 12),
+                            Icon(
+                              Icons.schedule,
+                              size: 14,
+                              color: Colors.purple[700],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Trip: $travelTime',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),

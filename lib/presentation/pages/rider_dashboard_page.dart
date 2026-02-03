@@ -5,11 +5,37 @@ import '../../core/utils/distance_calculator.dart';
 import '../bloc/map/map_bloc.dart';
 import '../bloc/map/map_event.dart';
 import '../bloc/map/map_state.dart';
+import '../bloc/rider_tracking/rider_tracking_bloc.dart';
+import '../bloc/rider_tracking/rider_tracking_event.dart';
+import '../widgets/rider_tracking_dashboard.dart';
 
-class RiderDashboardPage extends StatelessWidget {
+class RiderDashboardPage extends StatefulWidget {
   final User rider;
 
   const RiderDashboardPage({super.key, required this.rider});
+
+  @override
+  State<RiderDashboardPage> createState() => _RiderDashboardPageState();
+}
+
+class _RiderDashboardPageState extends State<RiderDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Start tracking when dashboard loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<RiderTrackingBloc>().add(StartTracking(widget.rider));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Stop tracking when leaving dashboard
+    context.read<RiderTrackingBloc>().add(const StopTracking());
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +51,10 @@ class RiderDashboardPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Live Tracking Dashboard
+                RiderTrackingDashboard(rider: widget.rider),
+                const SizedBox(height: 14),
+
                 // Welcome Card
                 Card(
                   margin: EdgeInsets.zero,
@@ -57,7 +87,7 @@ class RiderDashboardPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                rider.name,
+                                widget.rider.name,
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -73,12 +103,12 @@ class RiderDashboardPage extends StatelessWidget {
                 const SizedBox(height: 14),
 
                 // Route Information Card (with distance and travel time)
-                if (rider.startingTerminal != null &&
-                    rider.destinationTerminal != null &&
-                    rider.startingTerminalLat != null &&
-                    rider.startingTerminalLng != null &&
-                    rider.destinationTerminalLat != null &&
-                    rider.destinationTerminalLng != null)
+                if (widget.rider.startingTerminal != null &&
+                    widget.rider.destinationTerminal != null &&
+                    widget.rider.startingTerminalLat != null &&
+                    widget.rider.startingTerminalLng != null &&
+                    widget.rider.destinationTerminalLat != null &&
+                    widget.rider.destinationTerminalLng != null)
                   Card(
                     margin: EdgeInsets.zero,
                     child: Padding(
@@ -107,13 +137,13 @@ class RiderDashboardPage extends StatelessWidget {
                           _buildInfoRow(
                             context,
                             label: 'Starting Point',
-                            value: rider.startingTerminal!,
+                            value: widget.rider.startingTerminal!,
                           ),
                           const SizedBox(height: 8),
                           _buildInfoRow(
                             context,
                             label: 'Destination',
-                            value: rider.destinationTerminal!,
+                            value: widget.rider.destinationTerminal!,
                           ),
                           const SizedBox(height: 12),
                           const Divider(),
@@ -121,10 +151,10 @@ class RiderDashboardPage extends StatelessWidget {
                           Builder(
                             builder: (context) {
                               final distance = DistanceCalculator.calculate(
-                                rider.startingTerminalLat!,
-                                rider.startingTerminalLng!,
-                                rider.destinationTerminalLat!,
-                                rider.destinationTerminalLng!,
+                                widget.rider.startingTerminalLat!,
+                                widget.rider.startingTerminalLng!,
+                                widget.rider.destinationTerminalLat!,
+                                widget.rider.destinationTerminalLng!,
                               );
                               final travelTime =
                                   DistanceCalculator.calculateTravelTime(
@@ -241,7 +271,7 @@ class RiderDashboardPage extends StatelessWidget {
                 const SizedBox(height: 14),
 
                 // Bus Information Card
-                if (rider.busName != null)
+                if (widget.rider.busName != null)
                   Card(
                     margin: EdgeInsets.zero,
                     child: Padding(
@@ -270,14 +300,14 @@ class RiderDashboardPage extends StatelessWidget {
                           _buildInfoRow(
                             context,
                             label: 'Bus Name',
-                            value: rider.busName!,
+                            value: widget.rider.busName!,
                           ),
-                          if (rider.assignedRoute != null) ...[
+                          if (widget.rider.assignedRoute != null) ...[
                             const SizedBox(height: 8),
                             _buildInfoRow(
                               context,
                               label: 'Assigned Route',
-                              value: rider.assignedRoute!,
+                              value: widget.rider.assignedRoute!,
                             ),
                           ],
                         ],
