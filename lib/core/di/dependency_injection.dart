@@ -2,6 +2,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/hive_service.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/datasources/bus_remote_data_source.dart';
 import '../../data/datasources/location_local_data_source.dart';
@@ -16,6 +17,7 @@ import '../../data/repositories/location_repository_impl.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/recent_searches_repository_impl.dart';
 import '../../data/repositories/rider_location_repository_impl.dart';
+import '../../data/repositories/app_settings_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/bus_repository.dart';
 import '../../domain/repositories/location_repository.dart';
@@ -44,12 +46,17 @@ import '../../presentation/bloc/auth/auth_event.dart';
 import '../../presentation/bloc/map/map_bloc.dart';
 import '../../presentation/bloc/bus_search/bus_search_bloc.dart';
 import '../../presentation/bloc/trip_solution/trip_solution_bloc.dart';
+import '../../presentation/bloc/settings/app_settings_bloc.dart';
+import '../../presentation/bloc/settings/app_settings_event.dart';
 import '../../presentation/cubit/favorites_cubit.dart';
 import '../../presentation/cubit/recent_searches_cubit.dart';
 import '../../presentation/bloc/rider_tracking/rider_tracking_bloc.dart';
 import '../../theme/theme_cubit.dart';
 
 class DependencyInjection {
+  // Core Services
+  static late final HiveService hiveService;
+
   // Data Sources - Remote
   static late final AuthRemoteDataSource authRemoteDataSource;
   static late final BusRemoteDataSource busRemoteDataSource;
@@ -72,6 +79,7 @@ class DependencyInjection {
   static late final FavoritesRepository favoritesRepository;
   static late final RecentSearchesRepository recentSearchesRepository;
   static late final RiderLocationRepository riderLocationRepository;
+  static late final AppSettingsRepository appSettingsRepository;
 
   // Use Cases
   static late final SignIn signIn;
@@ -92,6 +100,10 @@ class DependencyInjection {
   static late final GetRiderLocationHistory getRiderLocationHistory;
 
   static Future<void> init() async {
+    // Initialize Hive
+    hiveService = HiveService();
+    await hiveService.init();
+
     // Initialize SharedPreferences
     final prefs = await SharedPreferences.getInstance();
 
@@ -132,6 +144,7 @@ class DependencyInjection {
     riderLocationRepository = RiderLocationRepositoryImpl(
       remoteDataSource: riderLocationRemoteDataSource,
     );
+    appSettingsRepository = AppSettingsRepository(hiveService);
 
     // Initialize use cases
     signIn = SignIn(authRepository);
@@ -154,6 +167,12 @@ class DependencyInjection {
 
   static List<BlocProvider> get providers => [
     BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()),
+    BlocProvider<AppSettingsBloc>(
+      create:
+          (_) =>
+              AppSettingsBloc(appSettingsRepository)
+                ..add(const LoadAppSettings()),
+    ),
     BlocProvider<AuthBloc>(
       create:
           (_) => AuthBloc(
