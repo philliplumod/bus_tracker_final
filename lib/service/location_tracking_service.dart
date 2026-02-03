@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../domain/entities/rider_location_update.dart';
 import '../domain/entities/user.dart';
 import '../domain/entities/user_assignment.dart';
 import '../domain/entities/terminal.dart';
+import '../core/services/firebase_realtime_service.dart';
 
 /// Service to manage periodic location tracking for riders with Firebase sync
 class LocationTrackingService {
@@ -19,6 +19,7 @@ class LocationTrackingService {
   Terminal? _startingTerminal;
   Terminal? _destinationTerminal;
   final DatabaseReference _dbRef;
+  final FirebaseRealtimeService _firebaseService;
 
   static const Duration _updateInterval = Duration(seconds: 2); // 2 seconds
   static const LocationSettings _locationSettings = LocationSettings(
@@ -26,75 +27,31 @@ class LocationTrackingService {
     distanceFilter: 5, // Update when moved 5 meters
   );
 
-  LocationTrackingService({DatabaseReference? dbRef})
-    : _dbRef = dbRef ?? FirebaseDatabase.instance.ref() {
+  LocationTrackingService({
+    DatabaseReference? dbRef,
+    FirebaseRealtimeService? firebaseService,
+  }) : _dbRef = dbRef ?? FirebaseDatabase.instance.ref(),
+       _firebaseService =
+           firebaseService ?? FirebaseRealtimeService(dbRef: dbRef) {
     debugPrint('🔥 LocationTrackingService initialized');
-    debugPrint('   Database reference: ${_dbRef.root.toString()}');
     _testFirebaseConnectivity();
   }
 
-  /// Test Firebase connectivity and authentication
+  /// Test Firebase connectivity
   Future<void> _testFirebaseConnectivity() async {
     try {
-      debugPrint('🧪 Testing Firebase connectivity...');
-      debugPrint('   Database URL: ${_dbRef.root.toString()}');
+      debugPrint(
+        '🧪 Testing Firebase connectivity from LocationTrackingService...',
+      );
+      final isConnected = await _firebaseService.testConnectivity();
 
-      // Test anonymous auth first
-      try {
-        final currentUser = firebase_auth.FirebaseAuth.instance.currentUser;
-        if (currentUser == null) {
-          debugPrint('   No Firebase user, signing in anonymously...');
-          await firebase_auth.FirebaseAuth.instance.signInAnonymously();
-          debugPrint('   ✅ Anonymous sign-in successful');
-        } else {
-          debugPrint('   ✅ Firebase user already exists: ${currentUser.uid}');
-        }
-      } catch (authError) {
-        debugPrint('   ⚠️ Auth error (may be okay if rules allow): $authError');
+      if (isConnected) {
+        debugPrint('✅ Firebase is ready for location tracking');
+      } else {
+        debugPrint('⚠️ Firebase connectivity check failed');
       }
-
-      final testRef = _dbRef.child('test_connection');
-      final testData = {
-        'timestamp': DateTime.now().toIso8601String(),
-        'message': 'Test write from LocationTrackingService',
-      };
-
-      debugPrint('   Attempting test write to: test_connection');
-      await testRef.set(testData);
-      debugPrint('✅ Firebase connectivity test successful');
-      debugPrint('   Data was written successfully!');
-
-      // Clean up test data
-      await testRef.remove();
-      debugPrint('   Test data cleaned up');
-    } catch (e, stackTrace) {
-      debugPrint('❌ Firebase connectivity test failed: $e');
-      debugPrint('   Stack trace: $stackTrace');
-
-      if (e.toString().contains('PERMISSION_DENIED')) {
-        debugPrint('   ');
-        debugPrint('   🚨 PERMISSION_DENIED ERROR!');
-        debugPrint(
-          '   Your Firebase Realtime Database rules are blocking writes.',
-        );
-        debugPrint('   ');
-        debugPrint('   📋 To fix this, go to Firebase Console:');
-        debugPrint('   1. https://console.firebase.google.com');
-        debugPrint('   2. Select your project: minibustracker-b2264');
-        debugPrint('   3. Go to: Realtime Database → Rules');
-        debugPrint('   4. Update rules to:');
-        debugPrint('   ');
-        debugPrint('   {');
-        debugPrint('     "rules": {');
-        debugPrint('       ".read": true,');
-        debugPrint('       ".write": true');
-        debugPrint('     }');
-        debugPrint('   }');
-        debugPrint('   ');
-        debugPrint('   ⚠️  NOTE: These are open rules for testing only!');
-        debugPrint('   For production, restrict access properly.');
-        debugPrint('   ');
-      }
+    } catch (e) {
+      debugPrint('❌ Firebase connectivity test error: $e');
     }
   }
 

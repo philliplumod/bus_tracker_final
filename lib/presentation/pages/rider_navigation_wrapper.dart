@@ -1,3 +1,4 @@
+import 'package:bus_tracker/presentation/bloc/rider_tracking/rider_tracking_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/user.dart';
@@ -28,15 +29,27 @@ class _RiderNavigationWrapperState extends State<RiderNavigationWrapper> {
     super.initState();
     _currentUser = widget.rider;
     // Automatically start tracking when rider logs in
+    // Use both immediate and post-frame callback to ensure it triggers
+    _startTrackingImmediately();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _riderTrackingBloc = context.read<RiderTrackingBloc>();
-        _riderTrackingBloc?.add(StartTracking(widget.rider));
-        debugPrint(
-          '🚀 Auto-starting rider tracking on login for: ${widget.rider.name}',
-        );
+        _startTrackingImmediately();
       }
     });
+  }
+
+  void _startTrackingImmediately() {
+    if (!mounted) return;
+
+    _riderTrackingBloc = context.read<RiderTrackingBloc>();
+
+    // Check if already tracking to avoid duplicate starts
+    if (_riderTrackingBloc?.state is! RiderTrackingActive) {
+      _riderTrackingBloc?.add(StartTracking(widget.rider));
+      debugPrint(
+        '🚀 Auto-starting rider tracking on login for: ${widget.rider.name}',
+      );
+    }
   }
 
   @override

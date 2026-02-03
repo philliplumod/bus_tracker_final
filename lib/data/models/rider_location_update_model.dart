@@ -94,4 +94,33 @@ class RiderLocationUpdateModel extends RiderLocationUpdate {
               : null,
     );
   }
+
+  /// Convert to Firebase-specific JSON format for storage
+  Map<String, dynamic> toFirebaseJson() {
+    return {
+      'userId': userId,
+      'userName': userName,
+      'busName': busName,
+      'routeName': routeName,
+      'busRouteAssignmentId': busRouteAssignmentId,
+      'latitude': latitude,
+      'longitude': longitude,
+      'speed': speed,
+      'heading': heading,
+      'timestamp': timestamp.toIso8601String(),
+      'accuracy': accuracy,
+      'altitude': altitude,
+      'destinationTerminal': destinationTerminal,
+      'estimatedDurationMinutes': estimatedDurationMinutes,
+      'startingTerminalName': startingTerminalName,
+      'startingTerminalLat': startingTerminalLat,
+      'startingTerminalLng': startingTerminalLng,
+      'destinationTerminalName': destinationTerminalName,
+      'destinationTerminalLat': destinationTerminalLat,
+      'destinationTerminalLng': destinationTerminalLng,
+    };
+  }
+
+  /// Convert to standard JSON format
+  Map<String, dynamic> toJson() => toFirebaseJson();
 }

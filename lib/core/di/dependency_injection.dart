@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/hive_service.dart';
+import '../../core/services/firebase_realtime_service.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/datasources/bus_remote_data_source.dart';
 import '../../data/datasources/location_local_data_source.dart';
@@ -64,6 +65,7 @@ import '../../theme/theme_cubit.dart';
 class DependencyInjection {
   // Core Services
   static late final HiveService hiveService;
+  static late final FirebaseRealtimeService firebaseRealtimeService;
 
   // API Services
   static late final ApiClient apiClient;
@@ -121,6 +123,11 @@ class DependencyInjection {
     hiveService = HiveService();
     await hiveService.init();
 
+    // Initialize Firebase Realtime Service
+    firebaseRealtimeService = FirebaseRealtimeService(
+      dbRef: FirebaseDatabase.instance.ref(),
+    );
+
     // Initialize SharedPreferences
     final prefs = await SharedPreferences.getInstance();
 
@@ -146,6 +153,7 @@ class DependencyInjection {
     );
     riderLocationRemoteDataSource = RiderLocationRemoteDataSourceImpl(
       dbRef: FirebaseDatabase.instance.ref(),
+      firebaseService: firebaseRealtimeService,
     );
     routeRemoteDataSource = RouteRemoteDataSourceImpl(
       dbRef: FirebaseDatabase.instance.ref(),
@@ -160,7 +168,10 @@ class DependencyInjection {
     recentSearchesDataSource = RecentSearchesDataSourceImpl(prefs: prefs);
 
     // Initialize services
-    locationTrackingService = LocationTrackingService();
+    locationTrackingService = LocationTrackingService(
+      dbRef: FirebaseDatabase.instance.ref(),
+      firebaseService: firebaseRealtimeService,
+    );
 
     // Initialize repositories
     authRepository = AuthRepositoryImpl(remoteDataSource: authRemoteDataSource);

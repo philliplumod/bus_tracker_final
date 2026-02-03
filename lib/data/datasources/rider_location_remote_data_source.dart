@@ -1,6 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import '../models/rider_location_update_model.dart';
+import '../../core/services/firebase_realtime_service.dart';
 
 abstract class RiderLocationRemoteDataSource {
   /// Store location update in Firebase
@@ -24,85 +25,55 @@ abstract class RiderLocationRemoteDataSource {
 class RiderLocationRemoteDataSourceImpl
     implements RiderLocationRemoteDataSource {
   final DatabaseReference _dbRef;
+  final FirebaseRealtimeService _firebaseService;
 
-  RiderLocationRemoteDataSourceImpl({DatabaseReference? dbRef})
-    : _dbRef = dbRef ?? FirebaseDatabase.instance.ref();
+  RiderLocationRemoteDataSourceImpl({
+    DatabaseReference? dbRef,
+    FirebaseRealtimeService? firebaseService,
+  }) : _dbRef = dbRef ?? FirebaseDatabase.instance.ref(),
+       _firebaseService =
+           firebaseService ?? FirebaseRealtimeService(dbRef: dbRef);
 
   @override
   Future<void> storeLocationUpdate(RiderLocationUpdateModel update) async {
     try {
-      // Store in rider location path: riders/{userId}/location/{timestamp}
-      final riderLocationRef = _dbRef
-          .child('riders')
-          .child(update.userId)
-          .child('location')
-          .child(update.timestamp.millisecondsSinceEpoch.toString());
-
-      // Store location data
-      await riderLocationRef.set(update.toFirebaseJson());
-
-      // Store current location and trip details at rider level for quick access
-      await _dbRef.child('riders').child(update.userId).update({
-        'userName': update.userName,
-        'busName': update.busName,
-        'routeName': update.routeName,
-        'busRouteAssignmentId': update.busRouteAssignmentId,
-        'currentLocation': {
-          'latitude': update.latitude,
-          'longitude': update.longitude,
-          'speed': update.speed,
-          'heading': update.heading,
-          'accuracy': update.accuracy,
-        },
-        'startingTerminal': {
-          'name': update.startingTerminalName,
-          'latitude': update.startingTerminalLat,
-          'longitude': update.startingTerminalLng,
-        },
-        'destinationTerminal': {
-          'name': update.destinationTerminalName,
-          'latitude': update.destinationTerminalLat,
-          'longitude': update.destinationTerminalLng,
-        },
-        'lastUpdate': update.timestamp.toIso8601String(),
-      });
-
-      // Store in bus tracking path for easy passenger lookup:
-      // active_buses/{busName}
-      await _dbRef.child('active_buses').child(update.busName).update({
-        'busName': update.busName,
-        'routeName': update.routeName,
-        'riderId': update.userId,
-        'riderName': update.userName,
-        'currentLocation': {
-          'latitude': update.latitude,
-          'longitude': update.longitude,
-          'speed': update.speed,
-          'heading': update.heading,
-          'accuracy': update.accuracy,
-        },
-        'startingTerminal': {
-          'name': update.startingTerminalName,
-          'latitude': update.startingTerminalLat,
-          'longitude': update.startingTerminalLng,
-        },
-        'destinationTerminal': {
-          'name': update.destinationTerminalName,
-          'latitude': update.destinationTerminalLat,
-          'longitude': update.destinationTerminalLng,
-        },
-        'lastUpdate': update.timestamp.toIso8601String(),
-      });
-
+      debugPrint('');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('📍 STORING LOCATION UPDATE TO FIREBASE');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('   Rider: ${update.userName}');
+      debugPrint('   Bus: ${update.busName}');
+      debugPrint('   Route: ${update.routeName}');
+      debugPrint('   Location: (${update.latitude}, ${update.longitude})');
+      debugPrint('   Speed: ${update.speed.toStringAsFixed(1)} km/h');
       debugPrint(
-        '✅ Location update stored in Firebase for rider: ${update.userName} on bus: ${update.busName}',
+        '   Route: ${update.startingTerminalName} → ${update.destinationTerminalName}',
       );
-      debugPrint('   📍 Location: (${update.latitude}, ${update.longitude})');
-      debugPrint(
-        '   🚏 Route: ${update.startingTerminalName} → ${update.destinationTerminalName}',
+      debugPrint('═══════════════════════════════════════');
+
+      final locationData = update.toFirebaseJson();
+
+      // Use the Firebase service to write with retry logic
+      await _firebaseService.writeLocationUpdate(
+        userId: update.userId,
+        busName: update.busName,
+        locationData: locationData,
       );
-    } catch (e) {
-      debugPrint('❌ Error storing location update: $e');
+
+      debugPrint('');
+      debugPrint('✅ LOCATION UPDATE STORED SUCCESSFULLY');
+      debugPrint('   All Firebase paths updated');
+      debugPrint('   Timestamp: ${update.timestamp.toIso8601String()}');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('');
+    } catch (e, stackTrace) {
+      debugPrint('');
+      debugPrint('❌ FAILED TO STORE LOCATION UPDATE');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('   Error: $e');
+      debugPrint('   Stack trace: $stackTrace');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('');
       throw Exception('Failed to store location update: $e');
     }
   }
@@ -163,30 +134,35 @@ class RiderLocationRemoteDataSourceImpl
 
   @override
   Stream<RiderLocationUpdateModel?> watchBusLocation(String busName) {
-    return _dbRef.child('active_buses').child(busName).onValue.map((event) {
-      final snapshot = event.snapshot;
+    debugPrint('👂 Setting up listener for bus: $busName');
 
-      if (snapshot.value == null || snapshot.value is! Map) {
+    return _firebaseService.listenToPath('active_buses/$busName').map((data) {
+      if (data == null) {
+        debugPrint('   ℹ️ No data for bus: $busName');
         return null;
       }
 
       try {
-        final data = Map<String, dynamic>.from(snapshot.value as Map);
-
         // Extract current location
-        final currentLocation = data['currentLocation'] as Map?;
-        if (currentLocation == null) return null;
+        final currentLocation =
+            data['currentLocation'] as Map<String, dynamic>?;
+        if (currentLocation == null) {
+          debugPrint('   ⚠️ No current location for bus: $busName');
+          return null;
+        }
 
         // Extract terminal data
-        final startingTerminal = data['startingTerminal'] as Map?;
-        final destinationTerminal = data['destinationTerminal'] as Map?;
+        final startingTerminal =
+            data['startingTerminal'] as Map<String, dynamic>?;
+        final destinationTerminal =
+            data['destinationTerminal'] as Map<String, dynamic>?;
 
-        return RiderLocationUpdateModel(
+        final update = RiderLocationUpdateModel(
           userId: data['riderId'] as String,
           userName: data['riderName'] as String,
           busName: data['busName'] as String,
           routeName: data['routeName'] as String,
-          busRouteAssignmentId: null,
+          busRouteAssignmentId: data['busRouteAssignmentId'] as String?,
           latitude: (currentLocation['latitude'] as num).toDouble(),
           longitude: (currentLocation['longitude'] as num).toDouble(),
           speed: (currentLocation['speed'] as num?)?.toDouble() ?? 0.0,
@@ -204,8 +180,11 @@ class RiderLocationRemoteDataSourceImpl
           destinationTerminalLng:
               (destinationTerminal?['longitude'] as num?)?.toDouble(),
         );
+
+        debugPrint('   ✅ Bus location update received: ${update.busName}');
+        return update;
       } catch (e) {
-        debugPrint('Error parsing bus location: $e');
+        debugPrint('   ❌ Error parsing bus location: $e');
         return null;
       }
     });
@@ -213,15 +192,15 @@ class RiderLocationRemoteDataSourceImpl
 
   @override
   Stream<Map<String, dynamic>> watchAllActiveBuses() {
-    return _dbRef.child('active_buses').onValue.map((event) {
-      final snapshot = event.snapshot;
+    debugPrint('👂 Setting up listener for all active buses');
 
-      if (snapshot.value == null || snapshot.value is! Map) {
+    return _firebaseService.listenToPath('active_buses').map((data) {
+      if (data == null) {
+        debugPrint('   ℹ️ No active buses');
         return <String, dynamic>{};
       }
 
       try {
-        final data = snapshot.value as Map<Object?, Object?>;
         final activeBuses = <String, dynamic>{};
 
         data.forEach((busKey, busData) {
@@ -240,6 +219,7 @@ class RiderLocationRemoteDataSourceImpl
                 'routeName': busInfo['routeName'],
                 'riderId': busInfo['riderId'],
                 'riderName': busInfo['riderName'],
+                'busRouteAssignmentId': busInfo['busRouteAssignmentId'],
                 'currentLocation':
                     currentLocation != null
                         ? Map<String, dynamic>.from(currentLocation)
@@ -255,15 +235,15 @@ class RiderLocationRemoteDataSourceImpl
                 'lastUpdate': busInfo['lastUpdate'],
               };
             } catch (e) {
-              debugPrint('Error parsing bus data for $busKey: $e');
+              debugPrint('   ❌ Error parsing bus data for $busKey: $e');
             }
           }
         });
 
-        debugPrint('📍 Active buses streaming: ${activeBuses.length} buses');
+        debugPrint('   ✅ Active buses update: ${activeBuses.length} buses');
         return activeBuses;
       } catch (e) {
-        debugPrint('❌ Error watching active buses: $e');
+        debugPrint('   ❌ Error watching active buses: $e');
         return <String, dynamic>{};
       }
     });

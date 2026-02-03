@@ -1,3 +1,5 @@
+import 'package:bus_tracker/presentation/bloc/rider_tracking/rider_tracking_bloc.dart';
+import 'package:bus_tracker/presentation/bloc/rider_tracking/rider_tracking_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -99,7 +101,20 @@ class _MyAppState extends State<MyApp> {
       hiveService: DependencyInjection.hiveService,
       onResumed: () {
         debugPrint('App resumed - refreshing data');
-        // You can trigger data refresh here if needed
+        // Trigger data refresh when app resumes
+        final authBloc = context.read<AuthBloc>();
+        final authState = authBloc.state;
+
+        if (authState is AuthAuthenticated &&
+            authState.user.role == UserRole.rider) {
+          debugPrint(
+            'App resumed this is the api keys ${const String.fromEnvironment('NEXT_PUBLIC_SUPABASE_URL')} ${const String.fromEnvironment('NEXT_PUBLIC_SUPABASE_ANON_KEY')} ${const String.fromEnvironment('SUPABASE_SERVICE_ROLE_KEY')}',
+          );
+          // Restart tracking to fetch fresh data from Supabase
+          final riderTrackingBloc = context.read<RiderTrackingBloc>();
+          riderTrackingBloc.add(StartTracking(authState.user));
+          debugPrint('🔄 Restarted tracking with fresh Supabase data');
+        }
       },
       onPaused: () {
         debugPrint('App paused - saving state');
