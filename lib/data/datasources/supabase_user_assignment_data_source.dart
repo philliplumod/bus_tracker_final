@@ -59,16 +59,17 @@ class SupabaseUserAssignmentDataSource {
       return UserAssignment(
         id: response['assignment_id'] as String,
         userId: response['user_id'] as String,
-        busRouteId: response['bus_route_id'] as String,
+        busRouteId:
+            response['bus_route_id'] as String? ??
+            response['assignment_id'] as String,
         busId: response['bus_id'] as String,
         busName: response['bus_name'] as String?,
         routeId: response['route_id'] as String,
         routeName: response['route_name'] as String?,
         startingTerminalId: response['starting_terminal_id'] as String?,
-        startingTerminalName: response['starting_terminal_name'] as String?,
+        startingTerminalName: response['starting_terminal'] as String?,
         destinationTerminalId: response['destination_terminal_id'] as String?,
-        destinationTerminalName:
-            response['destination_terminal_name'] as String?,
+        destinationTerminalName: response['destination_terminal'] as String?,
         assignedAt:
             response['assigned_at'] != null
                 ? DateTime.parse(response['assigned_at'] as String)
