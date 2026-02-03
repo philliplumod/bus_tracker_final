@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/usecases/get_current_user.dart';
 import '../../../domain/usecases/sign_in.dart';
 import '../../../domain/usecases/sign_out.dart';
 import '../../../domain/usecases/sign_up.dart';
 import '../../../service/location_tracking_service.dart';
+import '../../../data/datasources/api_client.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -15,6 +17,7 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
   final SignOut signOut;
   final GetCurrentUser getCurrentUser;
   final LocationTrackingService locationTrackingService;
+  final ApiClient apiClient;
 
   AuthBloc({
     required this.signIn,
@@ -22,11 +25,27 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
     required this.signOut,
     required this.getCurrentUser,
     required this.locationTrackingService,
+    required this.apiClient,
   }) : super(AuthInitial()) {
     on<CheckAuthStatus>(_onCheckAuthStatus);
     on<SignInRequested>(_onSignInRequested);
     on<SignUpRequested>(_onSignUpRequested);
     on<SignOutRequested>(_onSignOutRequested);
+    _initializeApiToken();
+  }
+
+  /// Initialize API token from SharedPreferences on app start
+  Future<void> _initializeApiToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      if (token != null) {
+        apiClient.setAuthToken(token);
+        debugPrint('🔑 API token loaded from storage');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to load API token: $e');
+    }
   }
 
   @override
@@ -88,19 +107,39 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
     debugPrint('🔄 AuthBloc: Emitted AuthLoading state');
 
     final result = await signIn(email: event.email, password: event.password);
-    result.fold(
-      (failure) {
+
+    // Handle result without using fold to properly await token setting
+    if (result.isLeft()) {
+      final failure = result.fold((l) => l, (r) => null);
+      if (failure != null) {
         debugPrint('❌ AuthBloc: Sign in failed - ${failure.message}');
         emit(AuthError(failure.message));
-      },
-      (user) {
+      }
+    } else {
+      final user = result.fold((l) => null, (r) => r);
+      if (user != null) {
         debugPrint(
           '✅ AuthBloc: Sign in successful - ${user.email} (${user.role})',
         );
+
+        // Set API token BEFORE emitting authenticated state
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('access_token');
+          if (token != null) {
+            apiClient.setAuthToken(token);
+            debugPrint('🔑 API token set for user: ${user.email}');
+          } else {
+            debugPrint('⚠️ No access token found after login');
+          }
+        } catch (e) {
+          debugPrint('❌ Failed to set API token: $e');
+        }
+
         emit(AuthAuthenticated(user));
         debugPrint('✅ AuthBloc: Emitted AuthAuthenticated state');
-      },
-    );
+      }
+    }
   }
 
   Future<void> _onSignUpRequested(
@@ -113,10 +152,31 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
       password: event.password,
       name: event.name,
     );
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) => emit(AuthAuthenticated(user)),
-    );
+
+    // Handle result without using fold to properly await token setting
+    if (result.isLeft()) {
+      final failure = result.fold((l) => l, (r) => null);
+      if (failure != null) {
+        emit(AuthError(failure.message));
+      }
+    } else {
+      final user = result.fold((l) => null, (r) => r);
+      if (user != null) {
+        // Set API token BEFORE emitting authenticated state
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('access_token');
+          if (token != null) {
+            apiClient.setAuthToken(token);
+            debugPrint('🔑 API token set for new user: ${user.email}');
+          }
+        } catch (e) {
+          debugPrint('❌ Failed to set API token: $e');
+        }
+
+        emit(AuthAuthenticated(user));
+      }
+    }
   }
 
   Future<void> _onSignOutRequested(
@@ -130,6 +190,10 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
       locationTrackingService.stopTracking();
       debugPrint('✅ Location tracking stopped');
     }
+
+    // Clear API token
+    apiClient.clearAuthToken();
+    debugPrint('🔑 API token cleared');
 
     emit(AuthLoading());
     final result = await signOut();

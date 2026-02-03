@@ -11,12 +11,17 @@ import '../../data/datasources/app_preferences_data_source.dart';
 import '../../data/datasources/favorites_local_data_source.dart';
 import '../../data/datasources/recent_searches_data_source.dart';
 import '../../data/datasources/rider_location_remote_data_source.dart';
+import '../../data/datasources/route_remote_data_source.dart';
+import '../../data/datasources/user_assignment_remote_data_source.dart';
+import '../../data/datasources/api_client.dart';
+import '../../data/datasources/backend_api_service.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../data/repositories/bus_repository_impl.dart';
 import '../../data/repositories/location_repository_impl.dart';
 import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/recent_searches_repository_impl.dart';
 import '../../data/repositories/rider_location_repository_impl.dart';
+import '../../data/repositories/user_assignment_repository_impl.dart';
 import '../../data/repositories/app_settings_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/bus_repository.dart';
@@ -24,6 +29,7 @@ import '../../domain/repositories/location_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
 import '../../domain/repositories/recent_searches_repository.dart';
 import '../../domain/repositories/rider_location_repository.dart';
+import '../../domain/repositories/user_assignment_repository.dart';
 import '../../service/location_tracking_service.dart';
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/get_nearby_buses.dart';
@@ -57,10 +63,17 @@ class DependencyInjection {
   // Core Services
   static late final HiveService hiveService;
 
+  // API Services
+  static late final ApiClient apiClient;
+  static late final BackendApiService backendApiService;
+
   // Data Sources - Remote
   static late final AuthRemoteDataSource authRemoteDataSource;
   static late final BusRemoteDataSource busRemoteDataSource;
   static late final RiderLocationRemoteDataSource riderLocationRemoteDataSource;
+  static late final RouteRemoteDataSource routeRemoteDataSource;
+  static late final UserAssignmentRemoteDataSource
+  userAssignmentRemoteDataSource;
 
   // Data Sources - Local
   static late final LocationLocalDataSource locationLocalDataSource;
@@ -79,6 +92,7 @@ class DependencyInjection {
   static late final FavoritesRepository favoritesRepository;
   static late final RecentSearchesRepository recentSearchesRepository;
   static late final RiderLocationRepository riderLocationRepository;
+  static late final UserAssignmentRepository userAssignmentRepository;
   static late final AppSettingsRepository appSettingsRepository;
 
   // Use Cases
@@ -107,6 +121,14 @@ class DependencyInjection {
     // Initialize SharedPreferences
     final prefs = await SharedPreferences.getInstance();
 
+    // Initialize API services
+    // TODO: Replace with your actual backend URL
+    apiClient = ApiClient(
+      baseUrl: 'http://localhost:3000',
+      client: http.Client(),
+    );
+    backendApiService = BackendApiService(apiClient: apiClient);
+
     // Initialize remote data sources
     authRemoteDataSource = AuthRemoteDataSourceImpl(
       client: http.Client(),
@@ -116,6 +138,13 @@ class DependencyInjection {
       busRef: FirebaseDatabase.instance.ref(),
     );
     riderLocationRemoteDataSource = RiderLocationRemoteDataSourceImpl(
+      dbRef: FirebaseDatabase.instance.ref(),
+    );
+    routeRemoteDataSource = RouteRemoteDataSourceImpl(
+      dbRef: FirebaseDatabase.instance.ref(),
+    );
+    userAssignmentRemoteDataSource = UserAssignmentRemoteDataSourceImpl(
+      backendApi: backendApiService,
       dbRef: FirebaseDatabase.instance.ref(),
     );
 
@@ -143,6 +172,9 @@ class DependencyInjection {
     );
     riderLocationRepository = RiderLocationRepositoryImpl(
       remoteDataSource: riderLocationRemoteDataSource,
+    );
+    userAssignmentRepository = UserAssignmentRepositoryImpl(
+      remoteDataSource: userAssignmentRemoteDataSource,
     );
     appSettingsRepository = AppSettingsRepository(hiveService);
 
@@ -181,6 +213,7 @@ class DependencyInjection {
             signOut: signOut,
             getCurrentUser: getCurrentUser,
             locationTrackingService: locationTrackingService,
+            apiClient: apiClient,
           )..add(CheckAuthStatus()),
     ),
     BlocProvider<MapBloc>(
@@ -223,6 +256,7 @@ class DependencyInjection {
           (_) => RiderTrackingBloc(
             locationService: locationTrackingService,
             storeRiderLocation: storeRiderLocation,
+            userAssignmentRepository: userAssignmentRepository,
           ),
     ),
   ];

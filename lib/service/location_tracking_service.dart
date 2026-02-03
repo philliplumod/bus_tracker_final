@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../domain/entities/rider_location_update.dart';
 import '../domain/entities/user.dart';
 import '../domain/entities/user_assignment.dart';
@@ -23,10 +24,31 @@ class LocationTrackingService {
   );
 
   LocationTrackingService({DatabaseReference? dbRef})
-    : _dbRef = dbRef ?? FirebaseDatabase.instance.ref();
+    : _dbRef = dbRef ?? FirebaseDatabase.instance.ref() {
+    debugPrint('🔥 LocationTrackingService initialized');
+    debugPrint('   Database reference: ${_dbRef.root.toString()}');
+    _testFirebaseConnectivity();
+  }
+
+  /// Test Firebase connectivity and authentication
+  Future<void> _testFirebaseConnectivity() async {
+    try {
+      debugPrint('🧪 Testing Firebase connectivity...');
+      final testRef = _dbRef.child('test_connection');
+      await testRef.set({'timestamp': DateTime.now().toIso8601String()});
+      debugPrint('✅ Firebase connectivity test successful');
+      await testRef.remove();
+    } catch (e) {
+      debugPrint('❌ Firebase connectivity test failed: $e');
+      debugPrint('   This usually means Firebase rules are blocking writes');
+      debugPrint('   Check your Firebase Realtime Database rules');
+    }
+  }
 
   /// Start tracking location for a rider with their assignment
   Future<void> startTracking(User rider, UserAssignment assignment) async {
+    debugPrint('🚀 LocationTrackingService.startTracking called');
+
     if (_trackingTimer != null) {
       debugPrint('⚠️ Location tracking already active');
       return;
@@ -36,21 +58,33 @@ class LocationTrackingService {
     _currentAssignment = assignment;
     _locationController = StreamController<RiderLocationUpdate>.broadcast();
 
+    debugPrint('   Timer status before: ${_trackingTimer?.isActive ?? false}');
+    debugPrint('   Controller created: ${_locationController != null}');
+
     // Check and request permissions
     final permission = await _checkAndRequestPermissions();
     if (!permission) {
+      debugPrint('❌ Location permissions denied');
       throw Exception('Location permissions denied');
     }
 
+    debugPrint('✅ Location permissions granted');
     debugPrint('🚀 Starting location tracking for rider: ${rider.name}');
     debugPrint('   Bus: ${assignment.busName} (ID: ${assignment.busId})');
     debugPrint('   Route: ${assignment.routeName} (ID: ${assignment.routeId})');
     debugPrint('   Assignment ID: ${assignment.id}');
 
     // Start periodic updates every 2 seconds
-    _trackingTimer = Timer.periodic(_updateInterval, (_) => _captureLocation());
+    _trackingTimer = Timer.periodic(_updateInterval, (_) {
+      debugPrint('⏰ Timer fired, calling _captureLocation');
+      _captureLocation();
+    });
+
+    debugPrint('   Timer started: ${_trackingTimer?.isActive ?? false}');
+    debugPrint('   Update interval: ${_updateInterval.inSeconds} seconds');
 
     // Capture first location immediately
+    debugPrint('📍 Capturing initial location...');
     await _captureLocation();
   }
 
@@ -76,10 +110,24 @@ class LocationTrackingService {
   /// Capture current location and create update
   Future<void> _captureLocation() async {
     try {
-      if (_currentRider == null || _currentAssignment == null) return;
+      debugPrint('📍 _captureLocation called');
+
+      if (_currentRider == null || _currentAssignment == null) {
+        debugPrint(
+          '⚠️ No current rider or assignment, skipping location capture',
+        );
+        return;
+      }
+
+      debugPrint('   Current rider: ${_currentRider!.name}');
+      debugPrint('   Current assignment: ${_currentAssignment!.id}');
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: _locationSettings,
+      );
+
+      debugPrint(
+        '   Position obtained: (${position.latitude}, ${position.longitude})',
       );
 
       // Calculate speed and heading
@@ -136,16 +184,39 @@ class LocationTrackingService {
       );
       debugPrint('   Speed: ${speed.toStringAsFixed(1)} km/h');
       debugPrint('   Heading: ${heading.toStringAsFixed(0)}°');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Error capturing location: $e');
+      debugPrint('   Stack trace: $stackTrace');
     }
   }
 
   /// Write location update to Firebase Realtime Database
   Future<void> _writeToFirebase(RiderLocationUpdate update) async {
     try {
+      debugPrint('🔥 Attempting Firebase write...');
+
+      // Check Firebase Auth state
+      final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (firebaseUser == null) {
+        debugPrint('⚠️ No Firebase Auth user - attempting anonymous auth');
+        try {
+          await firebase_auth.FirebaseAuth.instance.signInAnonymously();
+          debugPrint('✅ Signed in anonymously to Firebase');
+        } catch (authError) {
+          debugPrint('❌ Anonymous auth failed: $authError');
+          debugPrint(
+            '   Firebase Database requires authentication or open rules',
+          );
+        }
+      } else {
+        debugPrint('✅ Firebase Auth user exists: ${firebaseUser.uid}');
+      }
+
+      debugPrint('   Database URL: ${_dbRef.root.toString()}');
+
       // Structure: /riders/{userId}/location
       final path = 'riders/${update.userId}/location';
+      debugPrint('   Path: $path');
 
       final data = {
         'userId': update.userId,
@@ -162,11 +233,25 @@ class LocationTrackingService {
         'timestamp': update.timestamp.toIso8601String(),
       };
 
-      await _dbRef.child(path).set(data);
+      debugPrint('   Data: $data');
 
-      debugPrint('✅ Firebase updated: $path');
-    } catch (e) {
+      final ref = _dbRef.child(path);
+      debugPrint('   Reference created: ${ref.path}');
+
+      await ref.set(data);
+
+      debugPrint('✅ Firebase updated successfully: $path');
+    } catch (e, stackTrace) {
       debugPrint('❌ Error writing to Firebase: $e');
+      debugPrint('   Stack trace: $stackTrace');
+      if (e.toString().contains('PERMISSION_DENIED')) {
+        debugPrint(
+          '   ⚠️ PERMISSION_DENIED - Check Firebase Realtime Database rules',
+        );
+        debugPrint(
+          '   Rules should allow writes to /riders path for authenticated users',
+        );
+      }
     }
   }
 

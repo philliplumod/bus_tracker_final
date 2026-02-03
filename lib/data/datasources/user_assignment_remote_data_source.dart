@@ -2,7 +2,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/user_assignment.dart';
 import '../../domain/entities/route.dart';
-import 'route_remote_data_source.dart';
+import 'backend_api_service.dart';
 
 abstract class UserAssignmentRemoteDataSource {
   Future<UserAssignment?> getUserAssignment(String userId);
@@ -12,42 +12,34 @@ abstract class UserAssignmentRemoteDataSource {
 
 class UserAssignmentRemoteDataSourceImpl
     implements UserAssignmentRemoteDataSource {
+  final BackendApiService _backendApi;
   final DatabaseReference _dbRef;
-  final RouteRemoteDataSource _routeDataSource;
 
   UserAssignmentRemoteDataSourceImpl({
+    required BackendApiService backendApi,
     DatabaseReference? dbRef,
-    required RouteRemoteDataSource routeDataSource,
-  }) : _dbRef = dbRef ?? FirebaseDatabase.instance.ref(),
-       _routeDataSource = routeDataSource;
+  }) : _backendApi = backendApi,
+       _dbRef = dbRef ?? FirebaseDatabase.instance.ref();
 
   @override
   Future<UserAssignment?> getUserAssignment(String userId) async {
     try {
-      final snapshot =
-          await _dbRef
-              .child('user_assignments')
-              .orderByChild('user_id')
-              .equalTo(userId)
-              .limitToFirst(1)
-              .get();
+      debugPrint(
+        '📡 Fetching user assignment from backend API for user: $userId',
+      );
+      final assignment = await _backendApi.getUserAssignment(userId);
 
-      if (snapshot.value == null || snapshot.value is! Map) {
-        return null;
+      if (assignment != null) {
+        debugPrint('✅ User assignment found:');
+        debugPrint('   Bus: ${assignment.busName}');
+        debugPrint('   Route: ${assignment.routeName}');
+      } else {
+        debugPrint('⚠️ No assignment found for user $userId');
       }
 
-      final data = snapshot.value as Map<Object?, Object?>;
-      if (data.isEmpty) return null;
-
-      final entry = data.entries.first;
-      if (entry.value is Map) {
-        final assignmentData = Map<String, dynamic>.from(entry.value as Map);
-        assignmentData['assignment_id'] = entry.key.toString();
-        return UserAssignment.fromJson(assignmentData);
-      }
-
-      return null;
+      return assignment;
     } catch (e) {
+      debugPrint('❌ Failed to fetch user assignment from API: $e');
       throw Exception('Failed to fetch user assignment: $e');
     }
   }
@@ -55,25 +47,13 @@ class UserAssignmentRemoteDataSourceImpl
   @override
   Future<BusRoute?> getUserAssignedRoute(String userId) async {
     try {
-      // Get user assignment
+      // Get user assignment from backend API
       final assignment = await getUserAssignment(userId);
       if (assignment == null) return null;
 
-      // Get bus_route info
-      final busRouteSnapshot =
-          await _dbRef.child('bus_routes/${assignment.busRouteId}').get();
-
-      if (busRouteSnapshot.value == null || busRouteSnapshot.value is! Map) {
-        return null;
-      }
-
-      final busRouteData = busRouteSnapshot.value as Map;
-      final routeId = busRouteData['route_id'] as String?;
-
-      if (routeId == null) return null;
-
-      // Get full route details
-      return await _routeDataSource.getRouteById(routeId);
+      // Get full route details from backend API
+      final route = await _backendApi.getRouteById(assignment.routeId);
+      return route;
     } catch (e) {
       throw Exception('Failed to fetch user assigned route: $e');
     }

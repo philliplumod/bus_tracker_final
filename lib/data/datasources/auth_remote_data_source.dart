@@ -83,14 +83,32 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         debugPrint('   Route: ${user.assignedRoute} (${user.routeId})');
         debugPrint('   Assignment ID: ${user.busRouteId}');
 
-        // Store tokens if provided
-        if (data.containsKey('accessToken')) {
-          await prefs.setString('access_token', data['accessToken']);
-          debugPrint('🔑 Access token stored');
-        }
-        if (data.containsKey('refreshToken')) {
-          await prefs.setString('refresh_token', data['refreshToken']);
-          debugPrint('🔑 Refresh token stored');
+        // Store tokens from session object (new format) or root level (old format)
+        final session = data['session'];
+        if (session != null) {
+          // New format: tokens are in session object
+          if (session['access_token'] != null) {
+            await prefs.setString('access_token', session['access_token']);
+            debugPrint('🔑 Access token stored from session');
+          }
+          if (session['refresh_token'] != null) {
+            await prefs.setString('refresh_token', session['refresh_token']);
+            debugPrint('🔑 Refresh token stored from session');
+          }
+          if (session['expires_at'] != null) {
+            await prefs.setInt('token_expires_at', session['expires_at']);
+            debugPrint('⏰ Token expiry time stored');
+          }
+        } else {
+          // Old format: tokens at root level (backward compatibility)
+          if (data.containsKey('accessToken')) {
+            await prefs.setString('access_token', data['accessToken']);
+            debugPrint('🔑 Access token stored');
+          }
+          if (data.containsKey('refreshToken')) {
+            await prefs.setString('refresh_token', data['refreshToken']);
+            debugPrint('🔑 Refresh token stored');
+          }
         }
 
         // Store user data locally
@@ -278,12 +296,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           throw Exception('Invalid user role returned from signup');
         }
 
-        // Store tokens
-        if (data.containsKey('accessToken')) {
-          await prefs.setString('access_token', data['accessToken']);
-        }
-        if (data.containsKey('refreshToken')) {
-          await prefs.setString('refresh_token', data['refreshToken']);
+        // Store tokens from session object (new format) or root level (old format)
+        final session = data['session'];
+        if (session != null) {
+          // New format: tokens are in session object
+          if (session['access_token'] != null) {
+            await prefs.setString('access_token', session['access_token']);
+            debugPrint('🔑 Access token stored from session');
+          }
+          if (session['refresh_token'] != null) {
+            await prefs.setString('refresh_token', session['refresh_token']);
+            debugPrint('🔑 Refresh token stored from session');
+          }
+          if (session['expires_at'] != null) {
+            await prefs.setInt('token_expires_at', session['expires_at']);
+            debugPrint('⏰ Token expiry time stored');
+          }
+        } else {
+          // Old format: tokens at root level (backward compatibility)
+          if (data.containsKey('accessToken')) {
+            await prefs.setString('access_token', data['accessToken']);
+          }
+          if (data.containsKey('refreshToken')) {
+            await prefs.setString('refresh_token', data['refreshToken']);
+          }
         }
 
         // Store user data locally
@@ -324,8 +360,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await prefs.remove('user_role');
       await prefs.remove('user_assigned_route');
       await prefs.remove('user_bus_name');
+      await prefs.remove('user_bus_id');
+      await prefs.remove('user_route_id');
+      await prefs.remove('user_bus_route_id');
       await prefs.remove('access_token');
       await prefs.remove('refresh_token');
+      await prefs.remove('token_expires_at');
     } catch (e) {
       // Even if API call fails, clear local data
       await prefs.remove('user_id');
@@ -334,8 +374,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await prefs.remove('user_role');
       await prefs.remove('user_assigned_route');
       await prefs.remove('user_bus_name');
+      await prefs.remove('user_bus_id');
+      await prefs.remove('user_route_id');
+      await prefs.remove('user_bus_route_id');
       await prefs.remove('access_token');
       await prefs.remove('refresh_token');
+      await prefs.remove('token_expires_at');
       throw Exception('Sign out error: $e');
     }
   }
@@ -344,12 +388,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel?> getCurrentUser() async {
     try {
       final accessToken = prefs.getString('access_token');
+      final userId = prefs.getString('user_id');
+      final roleString = prefs.getString('user_role');
 
       // If we have an access token, try to fetch from backend
       if (accessToken != null) {
         try {
+          // For riders, use the rider profile endpoint to get complete data
+          String endpoint = '$baseUrl/auth/user';
+          if (roleString == 'rider' && userId != null) {
+            endpoint = '$baseUrl/riders/$userId/profile';
+            debugPrint('📡 Fetching rider profile from: $endpoint');
+          }
+
           final response = await client.get(
-            Uri.parse('$baseUrl/auth/user'),
+            Uri.parse(endpoint),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $accessToken',
@@ -358,7 +411,35 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
-            final user = UserModel.fromJson(data['user']);
+
+            debugPrint('📦 Response data keys: ${data.keys.toList()}');
+
+            // Handle rider profile response format
+            // Try multiple possible keys: 'rider', 'user', 'profile', or direct data
+            final userData =
+                data['rider'] ??
+                data['user'] ??
+                data['profile'] ??
+                (data.containsKey('id') ? data : null);
+
+            if (userData == null) {
+              debugPrint(
+                '❌ No user data found in response. Keys: ${data.keys.toList()}',
+              );
+              debugPrint('📄 Full response: ${response.body}');
+              throw Exception('No user data in response');
+            }
+
+            final user = UserModel.fromJson(userData);
+
+            debugPrint('✅ User profile loaded:');
+            debugPrint('   Role: ${user.role}');
+            debugPrint('   Bus: ${user.busName} (${user.busId})');
+            debugPrint('   Route: ${user.assignedRoute} (${user.routeId})');
+            debugPrint('   Destination: ${user.destinationTerminal}');
+            debugPrint(
+              '   Dest Coords: (${user.destinationTerminalLat}, ${user.destinationTerminalLng})',
+            );
 
             // Update local storage with fresh data
             await prefs.setString('user_id', user.id);
@@ -424,19 +505,24 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             }
 
             return user;
+          } else {
+            debugPrint(
+              '❌ Profile fetch failed with status: ${response.statusCode}',
+            );
+            debugPrint('📄 Response body: ${response.body}');
           }
-        } catch (e) {
+        } catch (e, stackTrace) {
           // If backend call fails, fall back to local storage
+          debugPrint('⚠️ Backend fetch failed, using local storage: $e');
+          debugPrint('📍 Stack trace: $stackTrace');
         }
       }
 
       // Fall back to local storage
-      final userId = prefs.getString('user_id');
       if (userId == null) return null;
 
       final email = prefs.getString('user_email');
       final name = prefs.getString('user_name');
-      final roleString = prefs.getString('user_role');
 
       if (email == null || name == null || roleString == null) {
         return null;

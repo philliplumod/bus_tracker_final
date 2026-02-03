@@ -47,11 +47,13 @@ Future<void> main() async {
 
   // Initialize Firebase
   try {
+    debugPrint('🔥 Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    debugPrint('✅ Firebase initialized successfully');
   } catch (e) {
-    debugPrint('Failed to initialize Firebase: $e');
+    debugPrint('❌ Failed to initialize Firebase: $e');
   }
 
   // Initialize notifications

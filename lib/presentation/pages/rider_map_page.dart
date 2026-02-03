@@ -38,6 +38,14 @@ class _RiderMapPageState extends State<RiderMapPage> {
   @override
   void initState() {
     super.initState();
+
+    // Debug: Check destination data
+    debugPrint('🗺️ RiderMapPage initialized');
+    debugPrint('   Rider: ${widget.rider.name}');
+    debugPrint('   Destination: ${widget.rider.destinationTerminal}');
+    debugPrint('   Dest Lat: ${widget.rider.destinationTerminalLat}');
+    debugPrint('   Dest Lng: ${widget.rider.destinationTerminalLng}');
+
     // Load rider's current location
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -85,6 +93,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
       if (widget.rider.destinationTerminalLat != null &&
           widget.rider.destinationTerminalLng != null) {
+        debugPrint('📍 Calculating distance to destination...');
         distance = LocationService.calculateDistance(
           lat,
           lon,
@@ -92,6 +101,8 @@ class _RiderMapPageState extends State<RiderMapPage> {
           widget.rider.destinationTerminalLng!,
         );
         travelTime = LocationService.estimateTravelTime(distance);
+        debugPrint('   Distance: ${distance.toStringAsFixed(2)} km');
+        debugPrint('   ETA: $travelTime minutes');
 
         // Get destination address if not already set
         if (widget.rider.destinationTerminal != null) {
@@ -105,8 +116,17 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
         // Load route polyline if not already loaded
         if (!_routeLoaded && widget.rider.destinationTerminalLat != null) {
+          debugPrint('🛣️ Loading route polyline...');
           _loadRoutePolyline(lat, lon);
         }
+      } else {
+        debugPrint('⚠️ Destination coordinates not available');
+        debugPrint(
+          '   destinationTerminalLat: ${widget.rider.destinationTerminalLat}',
+        );
+        debugPrint(
+          '   destinationTerminalLng: ${widget.rider.destinationTerminalLng}',
+        );
       }
 
       if (mounted) {
@@ -131,6 +151,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
   Future<void> _loadRoutePolyline(double lat, double lon) async {
     if (widget.rider.destinationTerminalLat == null ||
         widget.rider.destinationTerminalLng == null) {
+      debugPrint('❌ Cannot load route: destination coordinates missing');
       return;
     }
 
@@ -138,6 +159,12 @@ class _RiderMapPageState extends State<RiderMapPage> {
     final destination = LatLng(
       widget.rider.destinationTerminalLat!,
       widget.rider.destinationTerminalLng!,
+    );
+
+    debugPrint('🗺️ Requesting route from MapBloc');
+    debugPrint('   Origin: ${origin.latitude}, ${origin.longitude}');
+    debugPrint(
+      '   Destination: ${destination.latitude}, ${destination.longitude}',
     );
 
     // Request route from MapBloc
@@ -192,6 +219,10 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
             // Update polyline if route data available
             if (state.routeData != null && _polylines.isEmpty) {
+              debugPrint('📍 Route data received from MapBloc');
+              debugPrint(
+                '   Polyline points: ${state.routeData!.polylinePoints.length}',
+              );
               _updatePolyline(state.routeData!.polylinePoints);
 
               // Initialize marker animation
@@ -216,6 +247,10 @@ class _RiderMapPageState extends State<RiderMapPage> {
                   ),
                 );
               }
+            } else if (state.routeData == null) {
+              debugPrint('⚠️ No route data in MapLoaded state');
+            } else if (_polylines.isNotEmpty) {
+              debugPrint('ℹ️ Polyline already loaded');
             }
           }
         },
@@ -678,6 +713,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
   /// Update polyline with route points
   void _updatePolyline(List<LatLng> points) {
+    debugPrint('🛣️ Updating polyline with ${points.length} points');
     if (mounted) {
       setState(() {
         _polylines = {
@@ -691,10 +727,12 @@ class _RiderMapPageState extends State<RiderMapPage> {
           ),
         };
       });
+      debugPrint('✅ Polyline updated successfully');
     }
   }
 
   Set<Marker> _buildMarkers(MapLoaded state) {
+    debugPrint('📍 Building markers...');
     final markers = <Marker>{
       // Current location marker (animated)
       Marker(
@@ -712,10 +750,14 @@ class _RiderMapPageState extends State<RiderMapPage> {
         ),
       ),
     };
+    debugPrint('   ✅ Added rider location marker');
 
     // Add destination marker if available
     if (widget.rider.destinationTerminalLat != null &&
         widget.rider.destinationTerminalLng != null) {
+      debugPrint(
+        '   🏁 Adding destination marker at (${widget.rider.destinationTerminalLat}, ${widget.rider.destinationTerminalLng})',
+      );
       markers.add(
         Marker(
           markerId: const MarkerId('destination_terminal'),
@@ -730,29 +772,12 @@ class _RiderMapPageState extends State<RiderMapPage> {
           ),
         ),
       );
+      debugPrint('   ✅ Added destination marker');
+    } else {
+      debugPrint('   ⚠️ No destination terminal coordinates available');
     }
 
-    // Add starting terminal marker if available
-    if (widget.rider.startingTerminalLat != null &&
-        widget.rider.startingTerminalLng != null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('starting_terminal'),
-          position: LatLng(
-            widget.rider.startingTerminalLat!,
-            widget.rider.startingTerminalLng!,
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueGreen,
-          ),
-          infoWindow: InfoWindow(
-            title: 'Starting Point',
-            snippet: widget.rider.startingTerminal ?? 'Terminal',
-          ),
-        ),
-      );
-    }
-
+    debugPrint('🎯 Total markers: ${markers.length}');
     return markers;
   }
 

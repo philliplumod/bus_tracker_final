@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/entities/rider_location_update.dart';
 import '../../../domain/usecases/store_rider_location.dart';
+import '../../../domain/repositories/user_assignment_repository.dart';
 import '../../../service/location_tracking_service.dart';
 import 'rider_tracking_event.dart';
 import 'rider_tracking_state.dart';
@@ -11,11 +12,13 @@ import 'rider_tracking_state.dart';
 class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
   final LocationTrackingService locationService;
   final StoreRiderLocation storeRiderLocation;
+  final UserAssignmentRepository userAssignmentRepository;
   StreamSubscription<RiderLocationUpdate>? _locationSubscription;
 
   RiderTrackingBloc({
     required this.locationService,
     required this.storeRiderLocation,
+    required this.userAssignmentRepository,
   }) : super(RiderTrackingInitial()) {
     on<StartTracking>(_onStartTracking);
     on<StopTracking>(_onStopTracking);
@@ -28,32 +31,42 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
   ) async {
     try {
       debugPrint('🚀 Starting rider tracking for: ${event.rider.name}');
-      debugPrint('   Bus: ${event.rider.busName}');
-      debugPrint('   Route: ${event.rider.assignedRoute}');
+      debugPrint('   User ID: ${event.rider.id}');
 
-      // Fetch UserAssignment from backend for this rider
-      // For now, create a temporary assignment from rider data
-      // Use the actual IDs from the rider user object
-      final tempAssignment = UserAssignment(
-        id: event.rider.busRouteId ?? event.rider.id,
-        userId: event.rider.id,
-        busRouteId: event.rider.busRouteId ?? event.rider.id,
-        busId: event.rider.busId ?? event.rider.id,
-        busName: event.rider.busName,
-        routeId: event.rider.routeId ?? event.rider.id,
-        routeName: event.rider.assignedRoute,
-        assignedAt: event.rider.assignedAt,
+      // Fetch actual UserAssignment from repository
+      final assignmentResult = await userAssignmentRepository.getUserAssignment(
+        event.rider.id,
       );
 
-      debugPrint('📋 Assignment created:');
-      debugPrint('   Bus Name: ${tempAssignment.busName}');
-      debugPrint('   Route Name: ${tempAssignment.routeName}');
-      debugPrint('   Bus ID: ${tempAssignment.busId}');
-      debugPrint('   Route ID: ${tempAssignment.routeId}');
-      debugPrint('   Assignment ID: ${tempAssignment.busRouteId}');
+      // Handle the Either result
+      final UserAssignment? assignment = assignmentResult.fold((failure) {
+        debugPrint('⚠️ Failed to fetch user assignment: ${failure.message}');
+        return null;
+      }, (assignment) => assignment);
 
-      // Start the location tracking service with assignment
-      await locationService.startTracking(event.rider, tempAssignment);
+      if (assignment == null) {
+        debugPrint('❌ No assignment found for user ${event.rider.id}');
+        emit(
+          RiderTrackingError(
+            'No bus route assignment found. Please contact admin.',
+          ),
+        );
+        return;
+      }
+
+      debugPrint('📋 Assignment fetched from API:');
+      debugPrint('   Bus Name: ${assignment.busName}');
+      debugPrint('   Route Name: ${assignment.routeName}');
+      debugPrint('   Bus ID: ${assignment.busId}');
+      debugPrint('   Route ID: ${assignment.routeId}');
+      debugPrint('   Assignment ID: ${assignment.id}');
+      debugPrint('   Starting Terminal: ${assignment.startingTerminalName}');
+      debugPrint(
+        '   Destination Terminal: ${assignment.destinationTerminalName}',
+      );
+
+      // Start the location tracking service with actual assignment
+      await locationService.startTracking(event.rider, assignment);
 
       // Subscribe to location updates
       _locationSubscription = locationService.locationStream?.listen(

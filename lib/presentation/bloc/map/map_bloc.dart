@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/distance_calculator.dart';
@@ -119,7 +120,18 @@ class MapBloc extends Bloc<MapEvent, MapState> {
 
   Future<void> _onLoadRoute(LoadRoute event, Emitter<MapState> emit) async {
     final currentState = state;
-    if (currentState is! MapLoaded) return;
+    if (currentState is! MapLoaded) {
+      debugPrint('⚠️ Cannot load route: MapBloc not in MapLoaded state');
+      return;
+    }
+
+    debugPrint('🗺️ MapBloc: Loading route...');
+    debugPrint(
+      '   Origin: ${event.origin.latitude}, ${event.origin.longitude}',
+    );
+    debugPrint(
+      '   Destination: ${event.destination.latitude}, ${event.destination.longitude}',
+    );
 
     // Mark as loading route
     emit(currentState.copyWith(isLoadingRoute: true));
@@ -131,13 +143,21 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       );
 
       if (routeData != null) {
+        debugPrint('✅ Route loaded successfully');
+        debugPrint('   Polyline points: ${routeData.polylinePoints.length}');
+        debugPrint(
+          '   Distance: ${routeData.distanceKm.toStringAsFixed(2)} km',
+        );
+        debugPrint('   Duration: ${routeData.durationMinutes} minutes');
         emit(
           currentState.copyWith(routeData: routeData, isLoadingRoute: false),
         );
       } else {
+        debugPrint('⚠️ Route data is null');
         emit(currentState.copyWith(isLoadingRoute: false));
       }
     } catch (e) {
+      debugPrint('❌ Error loading route: $e');
       emit(currentState.copyWith(isLoadingRoute: false));
     }
   }
