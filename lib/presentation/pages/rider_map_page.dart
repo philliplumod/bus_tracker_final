@@ -33,13 +33,16 @@ class _RiderMapPageState extends State<RiderMapPage> {
   Set<Polyline> _polylines = {};
   bool _routeLoaded = false;
 
+  RiderTrackingBloc? _riderTrackingBloc;
+
   @override
   void initState() {
     super.initState();
     // Load rider's current location
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<RiderTrackingBloc>().add(StartTracking(widget.rider));
+        _riderTrackingBloc = context.read<RiderTrackingBloc>();
+        _riderTrackingBloc?.add(StartTracking(widget.rider));
         context.read<MapBloc>().add(LoadUserLocation());
         context.read<MapBloc>().add(SubscribeToBusUpdates());
         _loadLocationDetails();
@@ -49,7 +52,8 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
   @override
   void dispose() {
-    context.read<RiderTrackingBloc>().add(const StopTracking());
+    // Use saved reference to avoid unsafe context access during disposal
+    _riderTrackingBloc?.add(const StopTracking());
     _mapController?.dispose();
     _markerAnimation?.dispose();
     super.dispose();

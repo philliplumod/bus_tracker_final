@@ -19,13 +19,16 @@ class RiderDashboardPage extends StatefulWidget {
 }
 
 class _RiderDashboardPageState extends State<RiderDashboardPage> {
+  RiderTrackingBloc? _riderTrackingBloc;
+
   @override
   void initState() {
     super.initState();
     // Start tracking when dashboard loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<RiderTrackingBloc>().add(StartTracking(widget.rider));
+        _riderTrackingBloc = context.read<RiderTrackingBloc>();
+        _riderTrackingBloc?.add(StartTracking(widget.rider));
       }
     });
   }
@@ -33,7 +36,8 @@ class _RiderDashboardPageState extends State<RiderDashboardPage> {
   @override
   void dispose() {
     // Stop tracking when leaving dashboard
-    context.read<RiderTrackingBloc>().add(const StopTracking());
+    // Use saved reference to avoid unsafe context access during disposal
+    _riderTrackingBloc?.add(const StopTracking());
     super.dispose();
   }
 
