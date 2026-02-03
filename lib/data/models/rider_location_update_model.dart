@@ -16,6 +16,12 @@ class RiderLocationUpdateModel extends RiderLocationUpdate {
     super.altitude,
     super.destinationTerminal,
     super.estimatedDurationMinutes,
+    super.startingTerminalName,
+    super.startingTerminalLat,
+    super.startingTerminalLng,
+    super.destinationTerminalName,
+    super.destinationTerminalLat,
+    super.destinationTerminalLng,
   });
 
   factory RiderLocationUpdateModel.fromEntity(RiderLocationUpdate entity) {
@@ -34,6 +40,12 @@ class RiderLocationUpdateModel extends RiderLocationUpdate {
       altitude: entity.altitude,
       destinationTerminal: entity.destinationTerminal,
       estimatedDurationMinutes: entity.estimatedDurationMinutes,
+      startingTerminalName: entity.startingTerminalName,
+      startingTerminalLat: entity.startingTerminalLat,
+      startingTerminalLng: entity.startingTerminalLng,
+      destinationTerminalName: entity.destinationTerminalName,
+      destinationTerminalLat: entity.destinationTerminalLat,
+      destinationTerminalLng: entity.destinationTerminalLng,
     );
   }
 
@@ -61,6 +73,24 @@ class RiderLocationUpdateModel extends RiderLocationUpdate {
       estimatedDurationMinutes:
           json['estimatedDurationMinutes'] != null
               ? (json['estimatedDurationMinutes'] as num).toDouble()
+              : null,
+      startingTerminalName: json['startingTerminalName'] as String?,
+      startingTerminalLat:
+          json['startingTerminalLat'] != null
+              ? (json['startingTerminalLat'] as num).toDouble()
+              : null,
+      startingTerminalLng:
+          json['startingTerminalLng'] != null
+              ? (json['startingTerminalLng'] as num).toDouble()
+              : null,
+      destinationTerminalName: json['destinationTerminalName'] as String?,
+      destinationTerminalLat:
+          json['destinationTerminalLat'] != null
+              ? (json['destinationTerminalLat'] as num).toDouble()
+              : null,
+      destinationTerminalLng:
+          json['destinationTerminalLng'] != null
+              ? (json['destinationTerminalLng'] as num).toDouble()
               : null,
     );
   }

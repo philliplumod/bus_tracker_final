@@ -5,8 +5,6 @@ import '../../core/utils/distance_calculator.dart';
 import '../bloc/map/map_bloc.dart';
 import '../bloc/map/map_event.dart';
 import '../bloc/map/map_state.dart';
-import '../bloc/rider_tracking/rider_tracking_bloc.dart';
-import '../bloc/rider_tracking/rider_tracking_event.dart';
 import '../widgets/rider_tracking_dashboard.dart';
 
 class RiderDashboardPage extends StatefulWidget {
@@ -19,28 +17,6 @@ class RiderDashboardPage extends StatefulWidget {
 }
 
 class _RiderDashboardPageState extends State<RiderDashboardPage> {
-  RiderTrackingBloc? _riderTrackingBloc;
-
-  @override
-  void initState() {
-    super.initState();
-    // Start tracking when dashboard loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _riderTrackingBloc = context.read<RiderTrackingBloc>();
-        _riderTrackingBloc?.add(StartTracking(widget.rider));
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    // Stop tracking when leaving dashboard
-    // Use saved reference to avoid unsafe context access during disposal
-    _riderTrackingBloc?.add(const StopTracking());
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

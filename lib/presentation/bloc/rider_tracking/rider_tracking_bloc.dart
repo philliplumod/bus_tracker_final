@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/entities/rider_location_update.dart';
+import '../../../domain/entities/terminal.dart';
 import '../../../domain/usecases/store_rider_location.dart';
 import '../../../domain/repositories/user_assignment_repository.dart';
+import '../../../domain/repositories/route_repository.dart';
 import '../../../service/location_tracking_service.dart';
 import '../../../data/datasources/api_client.dart';
 import 'rider_tracking_event.dart';
@@ -15,6 +17,7 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
   final LocationTrackingService locationService;
   final StoreRiderLocation storeRiderLocation;
   final UserAssignmentRepository userAssignmentRepository;
+  final RouteRepository routeRepository;
   final ApiClient apiClient;
   StreamSubscription<RiderLocationUpdate>? _locationSubscription;
 
@@ -22,6 +25,7 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
     required this.locationService,
     required this.storeRiderLocation,
     required this.userAssignmentRepository,
+    required this.routeRepository,
     required this.apiClient,
   }) : super(RiderTrackingInitial()) {
     on<StartTracking>(_onStartTracking);
@@ -138,8 +142,51 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
         '   Destination Terminal: ${assignment.destinationTerminalName}',
       );
 
-      // Start the location tracking service with actual assignment
-      await locationService.startTracking(event.rider, assignment);
+      // Fetch terminal details to get coordinates
+      Terminal? startingTerminal;
+      Terminal? destinationTerminal;
+
+      if (assignment.startingTerminalId != null) {
+        final startTermResult = await routeRepository.getTerminalById(
+          assignment.startingTerminalId!,
+        );
+        startTermResult.fold(
+          (failure) => debugPrint(
+            '⚠️ Failed to fetch starting terminal: ${failure.message}',
+          ),
+          (terminal) {
+            startingTerminal = terminal;
+            debugPrint(
+              '   ✅ Starting terminal loaded: ${terminal.name} (${terminal.latitude}, ${terminal.longitude})',
+            );
+          },
+        );
+      }
+
+      if (assignment.destinationTerminalId != null) {
+        final destTermResult = await routeRepository.getTerminalById(
+          assignment.destinationTerminalId!,
+        );
+        destTermResult.fold(
+          (failure) => debugPrint(
+            '⚠️ Failed to fetch destination terminal: ${failure.message}',
+          ),
+          (terminal) {
+            destinationTerminal = terminal;
+            debugPrint(
+              '   ✅ Destination terminal loaded: ${terminal.name} (${terminal.latitude}, ${terminal.longitude})',
+            );
+          },
+        );
+      }
+
+      // Start the location tracking service with actual assignment and terminals
+      await locationService.startTracking(
+        event.rider,
+        assignment,
+        startingTerminal: startingTerminal,
+        destinationTerminal: destinationTerminal,
+      );
 
       // Subscribe to location updates
       _locationSubscription = locationService.locationStream?.listen(

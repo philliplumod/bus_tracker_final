@@ -74,8 +74,11 @@ class ApiBusRouteModel {
       busName: bus!.busName,
       routeId: routeId,
       routeName: route!.routeName,
-      startingTerminalId: route!.startingTerminalId,
-      destinationTerminalId: route!.destinationTerminalId,
+      startingTerminalId:
+          route!.startingTerminalId ?? route!.startingTerminal?.terminalId,
+      destinationTerminalId:
+          route!.destinationTerminalId ??
+          route!.destinationTerminal?.terminalId,
       startingTerminalName: route!.startingTerminal?.terminalName,
       destinationTerminalName: route!.destinationTerminal?.terminalName,
       createdAt: createdAt,

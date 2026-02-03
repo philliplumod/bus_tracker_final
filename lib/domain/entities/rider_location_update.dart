@@ -17,6 +17,16 @@ class RiderLocationUpdate extends Equatable {
   final String? destinationTerminal;
   final double? estimatedDurationMinutes; // to destination
 
+  // Starting terminal information
+  final String? startingTerminalName;
+  final double? startingTerminalLat;
+  final double? startingTerminalLng;
+
+  // Destination terminal information
+  final String? destinationTerminalName;
+  final double? destinationTerminalLat;
+  final double? destinationTerminalLng;
+
   const RiderLocationUpdate({
     required this.userId,
     required this.userName,
@@ -32,6 +42,12 @@ class RiderLocationUpdate extends Equatable {
     this.altitude,
     this.destinationTerminal,
     this.estimatedDurationMinutes,
+    this.startingTerminalName,
+    this.startingTerminalLat,
+    this.startingTerminalLng,
+    this.destinationTerminalName,
+    this.destinationTerminalLat,
+    this.destinationTerminalLng,
   });
 
   Map<String, dynamic> toJson() {
@@ -50,6 +66,12 @@ class RiderLocationUpdate extends Equatable {
       'altitude': altitude,
       'destinationTerminal': destinationTerminal,
       'estimatedDurationMinutes': estimatedDurationMinutes,
+      'startingTerminalName': startingTerminalName,
+      'startingTerminalLat': startingTerminalLat,
+      'startingTerminalLng': startingTerminalLng,
+      'destinationTerminalName': destinationTerminalName,
+      'destinationTerminalLat': destinationTerminalLat,
+      'destinationTerminalLng': destinationTerminalLng,
     };
   }
 
@@ -63,6 +85,12 @@ class RiderLocationUpdate extends Equatable {
       'accuracy': accuracy,
       'altitude': altitude,
       'estimatedDurationMinutes': estimatedDurationMinutes,
+      'startingTerminalName': startingTerminalName,
+      'startingTerminalLat': startingTerminalLat,
+      'startingTerminalLng': startingTerminalLng,
+      'destinationTerminalName': destinationTerminalName,
+      'destinationTerminalLat': destinationTerminalLat,
+      'destinationTerminalLng': destinationTerminalLng,
     };
   }
 
@@ -91,6 +119,24 @@ class RiderLocationUpdate extends Equatable {
           json['estimatedDurationMinutes'] != null
               ? (json['estimatedDurationMinutes'] as num).toDouble()
               : null,
+      startingTerminalName: json['startingTerminalName'] as String?,
+      startingTerminalLat:
+          json['startingTerminalLat'] != null
+              ? (json['startingTerminalLat'] as num).toDouble()
+              : null,
+      startingTerminalLng:
+          json['startingTerminalLng'] != null
+              ? (json['startingTerminalLng'] as num).toDouble()
+              : null,
+      destinationTerminalName: json['destinationTerminalName'] as String?,
+      destinationTerminalLat:
+          json['destinationTerminalLat'] != null
+              ? (json['destinationTerminalLat'] as num).toDouble()
+              : null,
+      destinationTerminalLng:
+          json['destinationTerminalLng'] != null
+              ? (json['destinationTerminalLng'] as num).toDouble()
+              : null,
     );
   }
 
@@ -109,6 +155,12 @@ class RiderLocationUpdate extends Equatable {
     double? altitude,
     String? destinationTerminal,
     double? estimatedDurationMinutes,
+    String? startingTerminalName,
+    double? startingTerminalLat,
+    double? startingTerminalLng,
+    String? destinationTerminalName,
+    double? destinationTerminalLat,
+    double? destinationTerminalLng,
   }) {
     return RiderLocationUpdate(
       userId: userId ?? this.userId,
@@ -126,6 +178,15 @@ class RiderLocationUpdate extends Equatable {
       destinationTerminal: destinationTerminal ?? this.destinationTerminal,
       estimatedDurationMinutes:
           estimatedDurationMinutes ?? this.estimatedDurationMinutes,
+      startingTerminalName: startingTerminalName ?? this.startingTerminalName,
+      startingTerminalLat: startingTerminalLat ?? this.startingTerminalLat,
+      startingTerminalLng: startingTerminalLng ?? this.startingTerminalLng,
+      destinationTerminalName:
+          destinationTerminalName ?? this.destinationTerminalName,
+      destinationTerminalLat:
+          destinationTerminalLat ?? this.destinationTerminalLat,
+      destinationTerminalLng:
+          destinationTerminalLng ?? this.destinationTerminalLng,
     );
   }
 
@@ -145,5 +206,11 @@ class RiderLocationUpdate extends Equatable {
     altitude,
     destinationTerminal,
     estimatedDurationMinutes,
+    startingTerminalName,
+    startingTerminalLat,
+    startingTerminalLng,
+    destinationTerminalName,
+    destinationTerminalLat,
+    destinationTerminalLng,
   ];
 }

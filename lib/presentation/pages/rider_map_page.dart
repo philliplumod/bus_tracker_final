@@ -8,7 +8,6 @@ import '../bloc/map/map_bloc.dart';
 import '../bloc/map/map_event.dart';
 import '../bloc/map/map_state.dart';
 import '../bloc/rider_tracking/rider_tracking_bloc.dart';
-import '../bloc/rider_tracking/rider_tracking_event.dart';
 import '../bloc/rider_tracking/rider_tracking_state.dart';
 import '../../core/utils/eta_service.dart';
 
@@ -46,11 +45,9 @@ class _RiderMapPageState extends State<RiderMapPage> {
     debugPrint('   Dest Lat: ${widget.rider.destinationTerminalLat}');
     debugPrint('   Dest Lng: ${widget.rider.destinationTerminalLng}');
 
-    // Load rider's current location
+    // Load rider's current location (tracking is auto-started in RiderNavigationWrapper)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _riderTrackingBloc = context.read<RiderTrackingBloc>();
-        _riderTrackingBloc?.add(StartTracking(widget.rider));
         context.read<MapBloc>().add(LoadUserLocation());
         context.read<MapBloc>().add(SubscribeToBusUpdates());
         _loadLocationDetails();
@@ -60,8 +57,7 @@ class _RiderMapPageState extends State<RiderMapPage> {
 
   @override
   void dispose() {
-    // Use saved reference to avoid unsafe context access during disposal
-    _riderTrackingBloc?.add(const StopTracking());
+    // Tracking is managed at navigation wrapper level, no need to stop here
     _mapController?.dispose();
     _markerAnimation?.dispose();
     super.dispose();
@@ -714,20 +710,33 @@ class _RiderMapPageState extends State<RiderMapPage> {
   /// Update polyline with route points
   void _updatePolyline(List<LatLng> points) {
     debugPrint('🛣️ Updating polyline with ${points.length} points');
+    if (points.isEmpty) {
+      debugPrint('⚠️ Cannot update polyline: points list is empty');
+      return;
+    }
     if (mounted) {
       setState(() {
         _polylines = {
           Polyline(
             polylineId: const PolylineId('route'),
             points: points,
-            color: Colors.red,
+            color: Colors.blue,
             width: 5,
             geodesic: true,
-            patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+            visible: true,
           ),
         };
       });
       debugPrint('✅ Polyline updated successfully');
+      debugPrint('   Polyline set size: ${_polylines.length}');
+      debugPrint(
+        '   First point: ${points.first.latitude}, ${points.first.longitude}',
+      );
+      debugPrint(
+        '   Last point: ${points.last.latitude}, ${points.last.longitude}',
+      );
+    } else {
+      debugPrint('⚠️ Cannot update polyline: widget not mounted');
     }
   }
 
@@ -851,65 +860,10 @@ class _RiderMapPageState extends State<RiderMapPage> {
       );
     }
 
-    if (trackingState is RiderTrackingError) {
-      return Container(
-        margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.red[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red[300]!),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.red[700], size: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Assignment Error',
-                    style: TextStyle(
-                      color: Colors.red[900],
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              trackingState.message,
-              style: TextStyle(color: Colors.red[800], fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Retry fetching assignment
-                  context.read<RiderTrackingBloc>().add(
-                    StartTracking(widget.rider),
-                  );
-                },
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[700],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    // Removed error display - errors are now handled silently
+    // if (trackingState is RiderTrackingError) {
+    //   return Container(...);
+    // }
 
     return const SizedBox.shrink();
   }

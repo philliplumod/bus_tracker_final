@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/error/failures.dart';
 import '../../domain/entities/rider_location_update.dart';
 import '../../domain/repositories/rider_location_repository.dart';
@@ -15,10 +16,16 @@ class RiderLocationRepositoryImpl implements RiderLocationRepository {
     RiderLocationUpdate update,
   ) async {
     try {
+      debugPrint(
+        '🔄 Repository: Storing location update for ${update.userName}',
+      );
+      debugPrint('   Location: (${update.latitude}, ${update.longitude})');
       final model = RiderLocationUpdateModel.fromEntity(update);
       await remoteDataSource.storeLocationUpdate(model);
+      debugPrint('✅ Repository: Location stored successfully');
       return const Right(null);
     } catch (e) {
+      debugPrint('❌ Repository: Failed to store location - $e');
       return Left(FirebaseFailure(e.toString()));
     }
   }

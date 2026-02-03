@@ -5,8 +5,8 @@ import 'api_terminal_model.dart';
 class ApiRouteModel {
   final String routeId;
   final String routeName;
-  final String startingTerminalId;
-  final String destinationTerminalId;
+  final String? startingTerminalId;
+  final String? destinationTerminalId;
   final double? distanceKm;
   final int? durationMinutes;
   final Map<String, dynamic>? routeData;
@@ -18,8 +18,8 @@ class ApiRouteModel {
   ApiRouteModel({
     required this.routeId,
     required this.routeName,
-    required this.startingTerminalId,
-    required this.destinationTerminalId,
+    this.startingTerminalId,
+    this.destinationTerminalId,
     this.distanceKm,
     this.durationMinutes,
     this.routeData,
@@ -30,11 +30,38 @@ class ApiRouteModel {
   });
 
   factory ApiRouteModel.fromJson(Map<String, dynamic> json) {
+    // Parse terminals first to potentially extract IDs from them
+    ApiTerminalModel? startingTerm;
+    ApiTerminalModel? destTerm;
+
+    if (json['starting_terminal'] != null) {
+      startingTerm = ApiTerminalModel.fromJson(
+        Map<String, dynamic>.from(json['starting_terminal'] as Map),
+      );
+    }
+
+    if (json['destination_terminal'] != null) {
+      destTerm = ApiTerminalModel.fromJson(
+        Map<String, dynamic>.from(json['destination_terminal'] as Map),
+      );
+    }
+
+    // Get terminal IDs from either direct fields or nested terminal objects
+    final String startingTerminalId =
+        (json['starting_terminal_id'] as String?) ??
+        startingTerm?.terminalId ??
+        '';
+
+    final String destinationTerminalId =
+        (json['destination_terminal_id'] as String?) ??
+        destTerm?.terminalId ??
+        '';
+
     return ApiRouteModel(
       routeId: json['route_id'] as String,
       routeName: json['route_name'] as String,
-      startingTerminalId: json['starting_terminal_id'] as String,
-      destinationTerminalId: json['destination_terminal_id'] as String,
+      startingTerminalId: startingTerminalId,
+      destinationTerminalId: destinationTerminalId,
       distanceKm:
           json['distance_km'] != null
               ? _parseNumeric(json['distance_km'])
@@ -52,18 +79,8 @@ class ApiRouteModel {
           json['updated_at'] != null
               ? DateTime.parse(json['updated_at'] as String)
               : null,
-      startingTerminal:
-          json['starting_terminal'] != null
-              ? ApiTerminalModel.fromJson(
-                Map<String, dynamic>.from(json['starting_terminal'] as Map),
-              )
-              : null,
-      destinationTerminal:
-          json['destination_terminal'] != null
-              ? ApiTerminalModel.fromJson(
-                Map<String, dynamic>.from(json['destination_terminal'] as Map),
-              )
-              : null,
+      startingTerminal: startingTerm,
+      destinationTerminal: destTerm,
     );
   }
 

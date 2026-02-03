@@ -22,8 +22,10 @@ import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/recent_searches_repository_impl.dart';
 import '../../data/repositories/rider_location_repository_impl.dart';
 import '../../data/repositories/user_assignment_repository_impl.dart';
+import '../../data/repositories/route_repository_impl.dart';
 import '../../data/repositories/app_settings_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/repositories/route_repository.dart';
 import '../../domain/repositories/bus_repository.dart';
 import '../../domain/repositories/location_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';
@@ -93,6 +95,7 @@ class DependencyInjection {
   static late final RecentSearchesRepository recentSearchesRepository;
   static late final RiderLocationRepository riderLocationRepository;
   static late final UserAssignmentRepository userAssignmentRepository;
+  static late final RouteRepository routeRepository;
   static late final AppSettingsRepository appSettingsRepository;
 
   // Use Cases
@@ -180,6 +183,9 @@ class DependencyInjection {
     userAssignmentRepository = UserAssignmentRepositoryImpl(
       remoteDataSource: userAssignmentRemoteDataSource,
     );
+    routeRepository = RouteRepositoryImpl(
+      remoteDataSource: routeRemoteDataSource,
+    );
     appSettingsRepository = AppSettingsRepository(hiveService);
 
     // Initialize use cases
@@ -261,6 +267,7 @@ class DependencyInjection {
             locationService: locationTrackingService,
             storeRiderLocation: storeRiderLocation,
             userAssignmentRepository: userAssignmentRepository,
+            routeRepository: routeRepository,
             apiClient: apiClient,
           ),
     ),

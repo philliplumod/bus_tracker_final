@@ -157,9 +157,11 @@ class ApiUserAssignmentModel {
       busName: busRoute!.bus?.busName,
       routeId: busRoute!.routeId,
       routeName: route.routeName,
-      startingTerminalId: route.startingTerminalId,
+      startingTerminalId:
+          route.startingTerminalId ?? route.startingTerminal?.terminalId,
       startingTerminalName: route.startingTerminal?.terminalName,
-      destinationTerminalId: route.destinationTerminalId,
+      destinationTerminalId:
+          route.destinationTerminalId ?? route.destinationTerminal?.terminalId,
       destinationTerminalName: route.destinationTerminal?.terminalName,
       assignedAt: assignedAt,
       updatedAt: updatedAt,
