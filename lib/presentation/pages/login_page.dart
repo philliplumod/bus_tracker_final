@@ -25,15 +25,59 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  bool _isValidEmail(String email) {
+    // RFC 5322 simplified email validation
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
+    return emailRegex.hasMatch(email);
+  }
+
   void _handleLogin() {
+    // Dismiss keyboard
+    FocusScope.of(context).unfocus();
+
     if (_formKey.currentState!.validate()) {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      // Additional validation
+      if (email.isEmpty) {
+        _showErrorSnackBar('Email cannot be empty');
+        return;
+      }
+
+      if (password.isEmpty) {
+        _showErrorSnackBar('Password cannot be empty');
+        return;
+      }
+
       context.read<AuthBloc>().add(
-        SignInRequested(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        ),
+        SignInRequested(email: email, password: password),
       );
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Dismiss',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
+      ),
+    );
   }
 
   @override
@@ -42,18 +86,60 @@ class _LoginPageState extends State<LoginPage> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-              ),
-            );
+            // Use addPostFrameCallback to ensure SnackBar shows after build completes
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.white),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            state.message,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: Colors.red.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 5),
+                    action: SnackBarAction(
+                      label: 'Dismiss',
+                      textColor: Colors.white,
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      },
+                    ),
+                  ),
+                );
+              }
+            });
+          } else if (state is AuthAuthenticated) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.white),
+                        const SizedBox(width: 12),
+                        Text('Welcome back, ${state.user.name}!'),
+                      ],
+                    ),
+                    backgroundColor: Colors.green.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            });
           }
         },
         builder: (context, state) {
-          if (state is AuthLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          final isLoading = state is AuthLoading;
 
           return SafeArea(
             child: Center(
@@ -89,18 +175,52 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
+                        textInputAction: TextInputAction.next,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        onChanged: (value) {
+                          // Auto-trim whitespace
+                          if (value.startsWith(' ') || value.endsWith(' ')) {
+                            _emailController.text = value.trim();
+                            _emailController
+                                .selection = TextSelection.fromPosition(
+                              TextPosition(
+                                offset: _emailController.text.length,
+                              ),
+                            );
+                          }
+                        },
+                        decoration: InputDecoration(
                           labelText: 'Email',
-                          prefixIcon: Icon(Icons.email),
-                          border: OutlineInputBorder(),
+                          hintText: 'Enter your email address',
+                          prefixIcon: const Icon(Icons.email),
+                          border: const OutlineInputBorder(),
+                          errorMaxLines: 2,
+                          helperText: '',
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Email is required';
                           }
-                          if (!value.contains('@')) {
-                            return 'Please enter a valid email';
+
+                          final trimmedValue = value.trim();
+
+                          if (!trimmedValue.contains('@')) {
+                            return 'Email must contain @';
                           }
+
+                          if (!trimmedValue.contains('.')) {
+                            return 'Email must contain a domain (e.g., .com)';
+                          }
+
+                          if (!_isValidEmail(trimmedValue)) {
+                            return 'Please enter a valid email address';
+                          }
+
+                          if (trimmedValue.length < 5) {
+                            return 'Email is too short';
+                          }
+
                           return null;
                         },
                       ),
@@ -108,16 +228,25 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _handleLogin(),
                         decoration: InputDecoration(
                           labelText: 'Password',
+                          hintText: 'Enter your password',
                           prefixIcon: const Icon(Icons.lock),
                           border: const OutlineInputBorder(),
+                          errorMaxLines: 2,
+                          helperText: '',
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
                                   ? Icons.visibility
                                   : Icons.visibility_off,
                             ),
+                            tooltip:
+                                _obscurePassword
+                                    ? 'Show password'
+                                    : 'Hide password',
                             onPressed: () {
                               setState(() {
                                 _obscurePassword = !_obscurePassword;
@@ -127,27 +256,50 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
+                            return 'Password is required';
                           }
+
                           if (value.length < 6) {
                             return 'Password must be at least 6 characters';
                           }
+
+                          if (value.length > 128) {
+                            return 'Password is too long';
+                          }
+
+                          // Check for whitespace at start/end
+                          if (value.trim() != value) {
+                            return 'Password cannot start or end with spaces';
+                          }
+
                           return null;
                         },
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: _handleLogin,
+                        onPressed: isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text(
-                          'Sign In',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        child:
+                            isLoading
+                                ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                                : const Text(
+                                  'Sign In',
+                                  style: TextStyle(fontSize: 16),
+                                ),
                       ),
                       const SizedBox(height: 16),
                       Row(

@@ -10,12 +10,12 @@ import 'domain/entities/user.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
 import 'presentation/bloc/auth/auth_state.dart';
 import 'presentation/pages/login_page.dart';
-import 'presentation/pages/rider_map_page.dart';
+import 'presentation/pages/rider_navigation_wrapper.dart';
+import 'presentation/pages/passenger_navigation_wrapper.dart';
 import 'service/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_cubit.dart';
 import 'theme/theme_state.dart';
-import 'presentation/pages/main_menu_page.dart';
 import 'firebase_options.dart';
 
 Future<void> requestNotificationPermission() async {
@@ -76,7 +76,47 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: state.themeMode,
-            home: BlocBuilder<AuthBloc, AuthState>(
+            home: BlocConsumer<AuthBloc, AuthState>(
+              listener: (context, authState) {
+                // Handle errors at the app level to ensure SnackBar shows
+                if (authState is AuthError) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  authState.message,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 5),
+                          action: SnackBarAction(
+                            label: 'Dismiss',
+                            textColor: Colors.white,
+                            onPressed: () {
+                              ScaffoldMessenger.of(
+                                context,
+                              ).hideCurrentSnackBar();
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                  });
+                }
+              },
               builder: (context, authState) {
                 if (authState is AuthLoading || authState is AuthInitial) {
                   return const Scaffold(
@@ -90,16 +130,22 @@ class MyApp extends StatelessWidget {
 
                   switch (user.role) {
                     case UserRole.rider:
-                      return SafeArea(child: RiderMapPage(rider: user));
+                      return SafeArea(
+                        child: RiderNavigationWrapper(rider: user),
+                      );
                     case UserRole.passenger:
-                      return const SafeArea(child: MainMenuPage());
+                      return const SafeArea(
+                        child: PassengerNavigationWrapper(),
+                      );
                     case UserRole.admin:
                       // TODO: Create admin page
-                      return const SafeArea(child: MainMenuPage());
+                      return const SafeArea(
+                        child: PassengerNavigationWrapper(),
+                      );
                   }
                 }
 
-                // Default to login page if unauthenticated
+                // Default to login page if unauthenticated or error
                 return const LoginPage();
               },
             ),

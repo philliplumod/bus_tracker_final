@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/entities/user.dart';
@@ -31,7 +32,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   // For physical device via Wi-Fi, use your computer's IP: http://192.168.x.x:3000/api
   // For production, use: https://your-production-domain.com/api
   //
-  // ⚠️ CURRENT: Using localhost with ADB port forwarding (scrcpy/USB connection)
+  // ⚠️ CURRENT SETUP: Physical device via USB with scrcpy
+  // REQUIRED: Run `adb reverse tcp:3000 tcp:3000` before launching the app
   static const String baseUrl = 'http://localhost:3000/api';
   final http.Client client;
   final SharedPreferences prefs;
@@ -44,6 +46,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String password,
   }) async {
     try {
+      debugPrint('🔐 Attempting login for: $email');
+      debugPrint('📡 Backend URL: $baseUrl/auth/sign-in');
+
       final response = await client
           .post(
             Uri.parse('$baseUrl/auth/sign-in'),
@@ -53,22 +58,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           .timeout(
             const Duration(seconds: 30),
             onTimeout: () {
+              debugPrint('⏱️ Request timed out');
               throw Exception(
-                'Connection timed out. Please check your backend server.',
+                'Connection timed out. Please check your backend server is running.',
               );
             },
           );
+
+      debugPrint('📨 Response status: ${response.statusCode}');
+      debugPrint('📨 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final user = UserModel.fromJson(data['user']);
 
+        debugPrint('✅ Login successful for user: ${user.email} (${user.role})');
+
         // Store tokens if provided
         if (data.containsKey('accessToken')) {
           await prefs.setString('access_token', data['accessToken']);
+          debugPrint('🔑 Access token stored');
         }
         if (data.containsKey('refreshToken')) {
           await prefs.setString('refresh_token', data['refreshToken']);
+          debugPrint('🔑 Refresh token stored');
         }
 
         // Store user data locally
@@ -83,14 +96,85 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           await prefs.setString('user_bus_name', user.busName!);
         }
 
+        debugPrint('💾 User data stored in SharedPreferences');
         return user;
       } else if (response.statusCode == 401) {
-        throw Exception('Invalid credentials');
+        // Parse error body to check for specific auth errors
+        try {
+          final errorData = jsonDecode(response.body);
+          final errorMessage = errorData['message'] ?? errorData['error'] ?? '';
+          final errorCode = errorData['code'] ?? '';
+
+          debugPrint(
+            '❌ Authentication failed: $errorMessage (code: $errorCode)',
+          );
+
+          // Check for specific error codes
+          if (errorMessage.toLowerCase().contains('email not confirmed') ||
+              errorCode == 'email_not_confirmed') {
+            throw Exception(
+              'Email not verified. Please check your email inbox and click the verification link, or contact your administrator.',
+            );
+          }
+
+          if (errorMessage.toLowerCase().contains(
+                'invalid login credentials',
+              ) ||
+              errorMessage.toLowerCase().contains('invalid credentials') ||
+              errorCode == 'invalid_credentials') {
+            throw Exception(
+              'Invalid email or password. Please double-check your credentials.',
+            );
+          }
+
+          // If we have a message from the backend, use it
+          if (errorMessage.isNotEmpty) {
+            throw Exception(errorMessage);
+          }
+        } catch (e) {
+          // If we already threw a formatted exception, rethrow it
+          if (e is Exception) {
+            rethrow;
+          }
+        }
+
+        // Default error message for 401
+        debugPrint('❌ Authentication failed: Invalid credentials');
+        throw Exception(
+          'Invalid email or password. Please check your credentials and try again.',
+        );
+      } else if (response.statusCode == 404) {
+        debugPrint('❌ Backend endpoint not found');
+        throw Exception(
+          'Authentication service not found. Please check if the backend server is running.',
+        );
       } else {
-        throw Exception('Failed to sign in: ${response.body}');
+        final errorBody = response.body;
+        try {
+          final errorData = jsonDecode(errorBody);
+          final errorMessage =
+              errorData['message'] ?? errorData['error'] ?? 'Unknown error';
+          debugPrint('❌ Server error: $errorMessage');
+          throw Exception(errorMessage);
+        } catch (_) {
+          debugPrint('❌ Server error: ${response.statusCode}');
+          throw Exception(
+            'Server error: ${response.statusCode}. Please try again later.',
+          );
+        }
       }
+    } on Exception {
+      rethrow; // Re-throw our formatted exceptions
     } catch (e) {
-      throw Exception('Sign in error: $e');
+      debugPrint('❌ Network error: $e');
+      // Catch network errors and other unexpected errors
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup')) {
+        throw Exception(
+          'Cannot connect to server. Please check:\n1. Backend server is running\n2. Network connection is active\n3. Firewall settings',
+        );
+      }
+      throw Exception('Network error: ${e.toString()}');
     }
   }
 

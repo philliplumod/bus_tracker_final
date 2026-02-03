@@ -9,9 +9,17 @@ class User extends Equatable {
   final UserRole role;
   final String? assignedRoute;
   final String? busName;
+  // Enhanced schema-based properties
   final String? busRouteId; // References user_assignments.bus_route_id
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  // Terminal information from fix-features
+  final String? startingTerminal;
+  final String? destinationTerminal;
+  final double? startingTerminalLat;
+  final double? startingTerminalLng;
+  final double? destinationTerminalLat;
+  final double? destinationTerminalLng;
 
   const User({
     required this.id,
@@ -23,6 +31,12 @@ class User extends Equatable {
     this.busRouteId,
     this.createdAt,
     this.updatedAt,
+    this.startingTerminal,
+    this.destinationTerminal,
+    this.startingTerminalLat,
+    this.startingTerminalLng,
+    this.destinationTerminalLat,
+    this.destinationTerminalLng,
   });
 
   Map<String, dynamic> toJson() {
@@ -36,6 +50,12 @@ class User extends Equatable {
       'busRouteId': busRouteId,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      'startingTerminal': startingTerminal,
+      'destinationTerminal': destinationTerminal,
+      'startingTerminalLat': startingTerminalLat,
+      'startingTerminalLng': startingTerminalLng,
+      'destinationTerminalLat': destinationTerminalLat,
+      'destinationTerminalLng': destinationTerminalLng,
     };
   }
 
@@ -59,6 +79,24 @@ class User extends Equatable {
           json['updated_at'] != null
               ? DateTime.parse(json['updated_at'] as String)
               : null,
+      startingTerminal: json['startingTerminal'] as String?,
+      destinationTerminal: json['destinationTerminal'] as String?,
+      startingTerminalLat:
+          json['startingTerminalLat'] != null
+              ? (json['startingTerminalLat'] as num).toDouble()
+              : null,
+      startingTerminalLng:
+          json['startingTerminalLng'] != null
+              ? (json['startingTerminalLng'] as num).toDouble()
+              : null,
+      destinationTerminalLat:
+          json['destinationTerminalLat'] != null
+              ? (json['destinationTerminalLat'] as num).toDouble()
+              : null,
+      destinationTerminalLng:
+          json['destinationTerminalLng'] != null
+              ? (json['destinationTerminalLng'] as num).toDouble()
+              : null,
     );
   }
 
@@ -72,6 +110,12 @@ class User extends Equatable {
     String? busRouteId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? startingTerminal,
+    String? destinationTerminal,
+    double? startingTerminalLat,
+    double? startingTerminalLng,
+    double? destinationTerminalLat,
+    double? destinationTerminalLng,
   }) {
     return User(
       id: id ?? this.id,
@@ -83,6 +127,14 @@ class User extends Equatable {
       busRouteId: busRouteId ?? this.busRouteId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      startingTerminal: startingTerminal ?? this.startingTerminal,
+      destinationTerminal: destinationTerminal ?? this.destinationTerminal,
+      startingTerminalLat: startingTerminalLat ?? this.startingTerminalLat,
+      startingTerminalLng: startingTerminalLng ?? this.startingTerminalLng,
+      destinationTerminalLat:
+          destinationTerminalLat ?? this.destinationTerminalLat,
+      destinationTerminalLng:
+          destinationTerminalLng ?? this.destinationTerminalLng,
     );
   }
 
@@ -97,5 +149,11 @@ class User extends Equatable {
     busRouteId,
     createdAt,
     updatedAt,
+    startingTerminal,
+    destinationTerminal,
+    startingTerminalLat,
+    startingTerminalLng,
+    destinationTerminalLat,
+    destinationTerminalLng,
   ];
 }

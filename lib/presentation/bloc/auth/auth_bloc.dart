@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/usecases/get_current_user.dart';
@@ -79,11 +80,23 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
     SignInRequested event,
     Emitter<AuthState> emit,
   ) async {
+    debugPrint('🔐 AuthBloc: SignInRequested event received');
     emit(AuthLoading());
+    debugPrint('🔄 AuthBloc: Emitted AuthLoading state');
+
     final result = await signIn(email: event.email, password: event.password);
     result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) => emit(AuthAuthenticated(user)),
+      (failure) {
+        debugPrint('❌ AuthBloc: Sign in failed - ${failure.message}');
+        emit(AuthError(failure.message));
+      },
+      (user) {
+        debugPrint(
+          '✅ AuthBloc: Sign in successful - ${user.email} (${user.role})',
+        );
+        emit(AuthAuthenticated(user));
+        debugPrint('✅ AuthBloc: Emitted AuthAuthenticated state');
+      },
     );
   }
 

@@ -19,7 +19,11 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
   @override
   void initState() {
     super.initState();
-    context.read<TripSolutionBloc>().add(LoadTripSolutionData());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<TripSolutionBloc>().add(LoadTripSolutionData());
+      }
+    });
   }
 
   @override
@@ -31,7 +35,10 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Display Trip Solution')),
+      appBar: AppBar(
+        title: const Text('Trip Solution'),
+        automaticallyImplyLeading: false,
+      ),
       body: BlocConsumer<TripSolutionBloc, TripSolutionState>(
         listener: (context, state) {
           if (state is TripSolutionLoaded &&
@@ -90,20 +97,20 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
             children: [
               // Search section
               Card(
-                margin: const EdgeInsets.all(16),
+                margin: const EdgeInsets.all(12),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Text(
                         'Where do you want to go?',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       TextField(
                         controller: _destinationController,
                         decoration: InputDecoration(
@@ -216,16 +223,16 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Text(
             'Found ${state.matchingBuses.length} bus(es) to ${state.searchQuery}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             itemCount: state.matchingBuses.length,
             itemBuilder: (context, index) {
               final bus = state.matchingBuses[index];
@@ -237,10 +244,14 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
               );
 
               return Card(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: const EdgeInsets.only(bottom: 6),
                 child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   leading: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Theme.of(context).primaryColor,
                       borderRadius: BorderRadius.circular(8),
@@ -248,6 +259,7 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
                     child: const Icon(
                       Icons.directions_bus,
                       color: Colors.white,
+                      size: 20,
                     ),
                   ),
                   title: Text(

@@ -8,6 +8,12 @@ class UserModel extends User {
     required super.role,
     super.assignedRoute,
     super.busName,
+    super.startingTerminal,
+    super.destinationTerminal,
+    super.startingTerminalLat,
+    super.startingTerminalLng,
+    super.destinationTerminalLat,
+    super.destinationTerminalLng,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -18,6 +24,24 @@ class UserModel extends User {
       role: _roleFromString(json['role'] as String),
       assignedRoute: json['assignedRoute'] as String?,
       busName: json['busName'] as String?,
+      startingTerminal: json['startingTerminal'] as String?,
+      destinationTerminal: json['destinationTerminal'] as String?,
+      startingTerminalLat:
+          json['startingTerminalLat'] != null
+              ? (json['startingTerminalLat'] as num).toDouble()
+              : null,
+      startingTerminalLng:
+          json['startingTerminalLng'] != null
+              ? (json['startingTerminalLng'] as num).toDouble()
+              : null,
+      destinationTerminalLat:
+          json['destinationTerminalLat'] != null
+              ? (json['destinationTerminalLat'] as num).toDouble()
+              : null,
+      destinationTerminalLng:
+          json['destinationTerminalLng'] != null
+              ? (json['destinationTerminalLng'] as num).toDouble()
+              : null,
     );
   }
 
@@ -30,6 +54,12 @@ class UserModel extends User {
       'role': _roleToString(role),
       'assignedRoute': assignedRoute,
       'busName': busName,
+      'startingTerminal': startingTerminal,
+      'destinationTerminal': destinationTerminal,
+      'startingTerminalLat': startingTerminalLat,
+      'startingTerminalLng': startingTerminalLng,
+      'destinationTerminalLat': destinationTerminalLat,
+      'destinationTerminalLng': destinationTerminalLng,
     };
   }
 
