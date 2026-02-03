@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/utils/distance_calculator.dart';
 import '../../core/utils/eta_service.dart';
 import '../bloc/trip_solution/trip_solution_bloc.dart';
 import '../bloc/trip_solution/trip_solution_event.dart';
 import '../bloc/trip_solution/trip_solution_state.dart';
+import '../widgets/map_destination_picker.dart';
 import 'bus_route_page.dart';
-import 'dart:async';
 
 class TripSolutionPage extends StatefulWidget {
   const TripSolutionPage({super.key});
@@ -17,7 +18,6 @@ class TripSolutionPage extends StatefulWidget {
 
 class _TripSolutionPageState extends State<TripSolutionPage> {
   final TextEditingController _destinationController = TextEditingController();
-  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -25,19 +25,12 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<TripSolutionBloc>().add(LoadTripSolutionData());
-        // Auto-refresh bus data every 10 seconds for real-time updates
-        _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-          if (mounted) {
-            context.read<TripSolutionBloc>().add(LoadTripSolutionData());
-          }
-        });
       }
     });
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     _destinationController.dispose();
     super.dispose();
   }
@@ -55,13 +48,39 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
               state.hasSearched &&
               state.destinationCoordinates == null &&
               state.searchQuery.isNotEmpty) {
-            final bloc = context.read<TripSolutionBloc>();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Location "${state.searchQuery}" not found. Try: ${bloc.knownLocations.keys.take(5).join(", ")}',
+                  'Location "${state.searchQuery}" not found. Try a different address or use the map picker.',
                 ),
                 duration: const Duration(seconds: 4),
+                action: SnackBarAction(
+                  label: 'USE MAP',
+                  onPressed: () {
+                    final userLoc = state.userLocation;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => MapDestinationPicker(
+                              initialPosition: LatLng(
+                                userLoc.latitude,
+                                userLoc.longitude,
+                              ),
+                              onLocationSelected: (coords, name) {
+                                _destinationController.text = name;
+                                context.read<TripSolutionBloc>().add(
+                                  SearchTripByCoordinates(
+                                    coords,
+                                    locationName: name,
+                                  ),
+                                );
+                              },
+                            ),
+                      ),
+                    );
+                  },
+                ),
               ),
             );
           }
@@ -101,8 +120,6 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
             return const SizedBox();
           }
 
-          final bloc = context.read<TripSolutionBloc>();
-
           return Column(
             children: [
               // Live update indicator
@@ -125,7 +142,7 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
                     ),
                     const SizedBox(width: 8),
                     const Text(
-                      'Live bus tracking • Updates every 10s',
+                      'Live bus tracking • Real-time updates',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -153,7 +170,7 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
                       TextField(
                         controller: _destinationController,
                         decoration: InputDecoration(
-                          hintText: 'Enter destination (e.g., SM Cebu, Ayala)',
+                          hintText: 'Enter any address or location name',
                           prefixIcon: const Icon(Icons.location_on),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -169,30 +186,81 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
                             ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Available locations: ${bloc.knownLocations.keys.take(5).join(", ")}, etc.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      const Text(
+                        'Type any address in Cebu (e.g., Gusa, SM Cebu, IT Park, your complete address)',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          if (_destinationController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter a destination'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                if (_destinationController.text
+                                    .trim()
+                                    .isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Please enter a destination',
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                context.read<TripSolutionBloc>().add(
+                                  SearchTripSolution(
+                                    _destinationController.text,
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.search),
+                              label: const Text('Search'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
-                            );
-                            return;
-                          }
-                          context.read<TripSolutionBloc>().add(
-                            SearchTripSolution(_destinationController.text),
-                          );
-                        },
-                        icon: const Icon(Icons.search),
-                        label: const Text('Find Buses'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => MapDestinationPicker(
+                                          initialPosition: LatLng(
+                                            state.userLocation.latitude,
+                                            state.userLocation.longitude,
+                                          ),
+                                          onLocationSelected: (coords, name) {
+                                            _destinationController.text = name;
+                                            context
+                                                .read<TripSolutionBloc>()
+                                                .add(
+                                                  SearchTripByCoordinates(
+                                                    coords,
+                                                    locationName: name,
+                                                  ),
+                                                );
+                                          },
+                                        ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.map),
+                              label: const Text('Pick on Map'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -238,7 +306,7 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
               Icon(Icons.bus_alert, size: 64, color: Colors.grey[400]),
               const SizedBox(height: 16),
               Text(
-                'No buses found for "${state.searchQuery}"',
+                'No buses found near "${state.searchQuery}"',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -248,7 +316,7 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Try searching for a different location or check if buses are available',
+                'Buses must be within 5km of your location or destination.\n\nThis could mean:\n• No buses are currently active\n• No buses are traveling this route right now\n• Try a different location',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),

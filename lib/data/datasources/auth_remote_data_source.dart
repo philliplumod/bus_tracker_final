@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/entities/user.dart';
 import '../models/user_model.dart';
+import 'api_client.dart';
 
 abstract class AuthRemoteDataSource {
   Future<UserModel> signIn({required String email, required String password});
@@ -36,8 +37,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   static const String baseUrl = 'http://localhost:3000/api';
   final http.Client client;
   final SharedPreferences prefs;
+  final ApiClient apiClient;
 
-  AuthRemoteDataSourceImpl({required this.client, required this.prefs});
+  AuthRemoteDataSourceImpl({
+    required this.client,
+    required this.prefs,
+    required this.apiClient,
+  });
 
   @override
   Future<UserModel> signIn({
@@ -405,25 +411,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       // If we have an access token, try to fetch from backend
       if (accessToken != null) {
+        // Ensure the ApiClient has the token
+        apiClient.setAuthToken(accessToken);
+
         try {
           // For riders, use the rider profile endpoint to get complete data
-          String endpoint = '$baseUrl/auth/user';
+          String endpoint = '/auth/user';
           if (roleString == 'rider' && userId != null) {
-            endpoint = '$baseUrl/riders/$userId/profile';
+            endpoint = '/riders/$userId/profile';
             debugPrint('📡 Fetching rider profile from: $endpoint');
           }
 
-          final response = await client.get(
-            Uri.parse(endpoint),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $accessToken',
-            },
-          );
+          // Use ApiClient instead of raw HTTP client for consistent token handling
+          final data = await apiClient.get(endpoint);
 
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-
+          if (data != null) {
             debugPrint('📦 Response data keys: ${data.keys.toList()}');
 
             // Handle rider profile response format
@@ -438,7 +440,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
               debugPrint(
                 '❌ No user data found in response. Keys: ${data.keys.toList()}',
               );
-              debugPrint('📄 Full response: ${response.body}');
+              debugPrint('📄 Full response: $data');
               throw Exception('No user data in response');
             }
 
@@ -518,10 +520,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
             return user;
           } else {
-            debugPrint(
-              '❌ Profile fetch failed with status: ${response.statusCode}',
-            );
-            debugPrint('📄 Response body: ${response.body}');
+            debugPrint('❌ API returned null response');
           }
         } catch (e, stackTrace) {
           // If backend call fails, fall back to local storage

@@ -158,4 +158,97 @@ class LocationService {
       return 'Unknown Location';
     }
   }
+
+  /// Calculate ETA (Estimated Time of Arrival) for a bus
+  /// Returns formatted ETA string like "5 min" or "15 min"
+  static String calculateETA({
+    required double userLat,
+    required double userLon,
+    required double busLat,
+    required double busLon,
+    double? busSpeed,
+  }) {
+    // Calculate distance between user and bus
+    final distanceKm = calculateDistance(userLat, userLon, busLat, busLon);
+
+    // If bus is very close (less than 100m), return "Arriving"
+    if (distanceKm < 0.1) {
+      return 'Arriving';
+    }
+
+    // Use bus speed if available and reasonable (between 5 and 100 km/h)
+    double effectiveSpeed = 25.0; // Default average city speed
+
+    if (busSpeed != null && busSpeed > 5 && busSpeed < 100) {
+      effectiveSpeed = busSpeed;
+    } else if (busSpeed != null && busSpeed > 0 && busSpeed <= 5) {
+      // If bus is moving slowly, use a minimum reasonable speed
+      effectiveSpeed = 15.0;
+    }
+
+    // Calculate ETA in minutes
+    final etaMinutes = estimateTravelTime(
+      distanceKm,
+      averageSpeedKmh: effectiveSpeed,
+    );
+
+    return formatTravelTime(etaMinutes);
+  }
+
+  /// Calculate bearing (direction) between two points in degrees
+  /// Returns angle from north (0-360)
+  static double calculateBearing(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    final dLon = _degreesToRadians(lon2 - lon1);
+    final lat1Rad = _degreesToRadians(lat1);
+    final lat2Rad = _degreesToRadians(lat2);
+
+    final y = sin(dLon) * cos(lat2Rad);
+    final x =
+        cos(lat1Rad) * sin(lat2Rad) - sin(lat1Rad) * cos(lat2Rad) * cos(dLon);
+
+    final bearing = atan2(y, x);
+    return (bearing * 180 / pi + 360) % 360;
+  }
+
+  static double atan2(double y, double x) {
+    if (x > 0) {
+      return atan(y / x);
+    } else if (x < 0 && y >= 0) {
+      return atan(y / x) + pi;
+    } else if (x < 0 && y < 0) {
+      return atan(y / x) - pi;
+    } else if (x == 0 && y > 0) {
+      return pi / 2;
+    } else if (x == 0 && y < 0) {
+      return -pi / 2;
+    }
+    return 0;
+  }
+
+  static double atan(double x) {
+    // Taylor series approximation for atan
+    if (x.abs() > 1) {
+      final sign = x < 0 ? -1 : 1;
+      return sign * (pi / 2 - atan(1 / x.abs()));
+    }
+    double result = x;
+    double term = x;
+    for (int i = 1; i < 20; i++) {
+      term *= -x * x;
+      result += term / (2 * i + 1);
+    }
+    return result;
+  }
+
+  /// Get compass direction from bearing
+  static String getCompassDirection(double bearing) {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    final index = ((bearing + 22.5) / 45).floor() % 8;
+    return directions[index];
+  }
 }

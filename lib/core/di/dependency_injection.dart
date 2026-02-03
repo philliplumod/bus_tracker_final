@@ -147,6 +147,7 @@ class DependencyInjection {
     authRemoteDataSource = AuthRemoteDataSourceImpl(
       client: http.Client(),
       prefs: prefs,
+      apiClient: apiClient,
     );
     busRemoteDataSource = BusRemoteDataSourceImpl(
       busRef: FirebaseDatabase.instance.ref(),
@@ -243,13 +244,18 @@ class DependencyInjection {
           ),
     ),
     BlocProvider<BusSearchBloc>(
-      create: (_) => BusSearchBloc(getNearbyBuses: getNearbyBuses),
+      create:
+          (_) => BusSearchBloc(
+            getNearbyBuses: getNearbyBuses,
+            busRepository: busRepository,
+          ),
     ),
     BlocProvider<TripSolutionBloc>(
       create:
           (_) => TripSolutionBloc(
             getUserLocation: getUserLocation,
             getNearbyBuses: getNearbyBuses,
+            busRepository: busRepository,
           ),
     ),
     BlocProvider<FavoritesCubit>(

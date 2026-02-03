@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../core/utils/distance_calculator.dart';
+import '../../core/utils/location_service.dart';
 import '../bloc/bus_search/bus_search_bloc.dart';
 import '../bloc/bus_search/bus_search_event.dart';
 import '../bloc/bus_search/bus_search_state.dart';
 import 'bus_route_page.dart';
-import 'dart:async';
 
 class EnterBusNumberPage extends StatefulWidget {
   const EnterBusNumberPage({super.key});
@@ -15,8 +17,8 @@ class EnterBusNumberPage extends StatefulWidget {
 
 class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
   final TextEditingController _busNumberController = TextEditingController();
-  Timer? _refreshTimer;
   BusSearchBloc? _busSearchBloc;
+  Position? _userPosition;
 
   @override
   void didChangeDependencies() {
@@ -28,22 +30,32 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
   @override
   void initState() {
     super.initState();
+    _getUserLocation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _busSearchBloc != null) {
         _busSearchBloc!.add(LoadAllBuses());
-        // Auto-refresh bus data every 10 seconds for real-time updates
-        _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-          if (mounted && _busSearchBloc != null) {
-            _busSearchBloc!.add(LoadAllBuses());
-          }
-        });
       }
     });
   }
 
+  Future<void> _getUserLocation() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      if (mounted) {
+        setState(() {
+          _userPosition = position;
+        });
+      }
+    } catch (e) {
+      // Use default location if unable to get user location
+      debugPrint('Error getting user location: $e');
+    }
+  }
+
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     _busNumberController.dispose();
     _busSearchBloc = null;
     super.dispose();
@@ -142,7 +154,7 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Live tracking • ${state.allBuses.length} bus(es) online • Updates every 10s',
+                          'Live tracking • ${state.allBuses.length} bus(es) online • Real-time updates',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -241,6 +253,27 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
         final bus = state.filteredBuses[index];
         final isMoving = (bus.speed ?? 0) > 1.0;
 
+        // Calculate distance and ETA if user position is available
+        String? eta;
+        double? distanceFromUser;
+        if (_userPosition != null &&
+            bus.latitude != null &&
+            bus.longitude != null) {
+          distanceFromUser = DistanceCalculator.calculate(
+            _userPosition!.latitude,
+            _userPosition!.longitude,
+            bus.latitude!,
+            bus.longitude!,
+          );
+          eta = LocationService.calculateETA(
+            userLat: _userPosition!.latitude,
+            userLon: _userPosition!.longitude,
+            busLat: bus.latitude!,
+            busLon: bus.longitude!,
+            busSpeed: bus.speed,
+          );
+        }
+
         return Card(
           margin: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
           elevation: 2,
@@ -333,7 +366,54 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
                       style: TextStyle(fontSize: 13),
                     ),
                   ),
+                const SizedBox(height: 6),
+                // Distance and ETA row
+                if (distanceFromUser != null && eta != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Colors.blue[700],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${distanceFromUser.toStringAsFixed(2)} km away',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Colors.orange[700],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'ETA: $eta',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                else if (distanceFromUser != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Colors.blue[700],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${distanceFromUser.toStringAsFixed(2)} km away',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 4),
+                // Speed and direction row
                 Row(
                   children: [
                     Icon(Icons.speed, size: 14, color: Colors.grey[700]),
