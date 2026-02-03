@@ -144,6 +144,7 @@ class _SignUpPageState extends State<SignUpPage> {
             });
             // Return to login after short delay
             Future.delayed(const Duration(seconds: 2), () {
+              // ignore: use_build_context_synchronously
               if (mounted) Navigator.of(context).pop();
             });
           }

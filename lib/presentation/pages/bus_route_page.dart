@@ -82,13 +82,13 @@ class _BusRoutePageState extends State<BusRoutePage> {
                   _buildInfoRow(
                     Icons.speed,
                     'Speed',
-                    '${widget.bus.speed.toStringAsFixed(1)} km/h',
+                    '${widget.bus.speed?.toStringAsFixed(1) ?? 'N/A'} km/h',
                   ),
                   const SizedBox(height: 8),
                   _buildInfoRow(
                     Icons.location_on,
                     'Location',
-                    '${widget.bus.latitude.toStringAsFixed(6)}, ${widget.bus.longitude.toStringAsFixed(6)}',
+                    '${widget.bus.latitude?.toStringAsFixed(6) ?? 'N/A'}, ${widget.bus.longitude?.toStringAsFixed(6) ?? 'N/A'}',
                   ),
                   if (widget.bus.distanceFromUser != null) ...[
                     const SizedBox(height: 8),
@@ -106,18 +106,23 @@ class _BusRoutePageState extends State<BusRoutePage> {
           Expanded(
             child: BlocBuilder<MapBloc, MapState>(
               builder: (context, state) {
-                if (state is MapLoaded) {
+                if (state is MapLoaded &&
+                    widget.bus.latitude != null &&
+                    widget.bus.longitude != null) {
                   return GoogleMap(
                     initialCameraPosition: CameraPosition(
-                      target: LatLng(widget.bus.latitude, widget.bus.longitude),
+                      target: LatLng(
+                        widget.bus.latitude!,
+                        widget.bus.longitude!,
+                      ),
                       zoom: 15.0,
                     ),
                     markers: {
                       Marker(
                         markerId: MarkerId(widget.bus.id),
                         position: LatLng(
-                          widget.bus.latitude,
-                          widget.bus.longitude,
+                          widget.bus.latitude!,
+                          widget.bus.longitude!,
                         ),
                         icon: BitmapDescriptor.defaultMarkerWithHue(
                           BitmapDescriptor.hueBlue,
@@ -150,7 +155,7 @@ class _BusRoutePageState extends State<BusRoutePage> {
                             state.userLocation.latitude,
                             state.userLocation.longitude,
                           ),
-                          LatLng(widget.bus.latitude, widget.bus.longitude),
+                          LatLng(widget.bus.latitude!, widget.bus.longitude!),
                         ],
                         color: Theme.of(context).primaryColor,
                         width: 3,

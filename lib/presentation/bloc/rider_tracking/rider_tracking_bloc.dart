@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:bus_tracker/domain/entities/user_assignment.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/entities/rider_location_update.dart';
@@ -28,8 +29,20 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
     try {
       debugPrint('🚀 Starting rider tracking for: ${event.rider.name}');
 
-      // Start the location tracking service
-      await locationService.startTracking(event.rider);
+      // Fetch UserAssignment from backend for this rider
+      // For now, create a temporary assignment from rider data
+      final tempAssignment = UserAssignment(
+        id: event.rider.busRouteId ?? 'unknown',
+        userId: event.rider.id,
+        busRouteId: event.rider.busRouteId ?? 'unknown',
+        busId: event.rider.busId ?? 'unknown',
+        busName: event.rider.busName,
+        routeId: event.rider.routeId ?? 'unknown',
+        assignedAt: event.rider.assignedAt,
+      );
+
+      // Start the location tracking service with assignment
+      await locationService.startTracking(event.rider, tempAssignment);
 
       // Subscribe to location updates
       _locationSubscription = locationService.locationStream?.listen(

@@ -1,32 +1,38 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../domain/entities/rider_location_update.dart';
 import '../domain/entities/user.dart';
-import '../core/utils/eta_service.dart';
-import '../domain/entities/terminal.dart';
+import '../domain/entities/user_assignment.dart';
 
-/// Service to manage periodic location tracking for riders
+/// Service to manage periodic location tracking for riders with Firebase sync
 class LocationTrackingService {
   Timer? _trackingTimer;
   StreamController<RiderLocationUpdate>? _locationController;
   Position? _lastPosition;
   User? _currentRider;
+  UserAssignment? _currentAssignment;
+  final DatabaseReference _dbRef;
 
-  static const Duration _updateInterval = Duration(seconds: 5);
+  static const Duration _updateInterval = Duration(seconds: 2); // 2 seconds
   static const LocationSettings _locationSettings = LocationSettings(
     accuracy: LocationAccuracy.high,
     distanceFilter: 5, // Update when moved 5 meters
   );
 
-  /// Start tracking location for a rider
-  Future<void> startTracking(User rider) async {
+  LocationTrackingService({DatabaseReference? dbRef})
+    : _dbRef = dbRef ?? FirebaseDatabase.instance.ref();
+
+  /// Start tracking location for a rider with their assignment
+  Future<void> startTracking(User rider, UserAssignment assignment) async {
     if (_trackingTimer != null) {
       debugPrint('⚠️ Location tracking already active');
       return;
     }
 
     _currentRider = rider;
+    _currentAssignment = assignment;
     _locationController = StreamController<RiderLocationUpdate>.broadcast();
 
     // Check and request permissions
@@ -36,8 +42,11 @@ class LocationTrackingService {
     }
 
     debugPrint('🚀 Starting location tracking for rider: ${rider.name}');
+    debugPrint('   Bus: ${assignment.busName} (${assignment.busId})');
+    debugPrint('   Route: ${assignment.routeName} (${assignment.routeId})');
+    debugPrint('   Assignment: ${assignment.id}');
 
-    // Start periodic updates
+    // Start periodic updates every 2 seconds
     _trackingTimer = Timer.periodic(_updateInterval, (_) => _captureLocation());
 
     // Capture first location immediately
@@ -53,6 +62,7 @@ class LocationTrackingService {
     _locationController = null;
     _lastPosition = null;
     _currentRider = null;
+    _currentAssignment = null;
   }
 
   /// Get the stream of location updates
@@ -65,7 +75,7 @@ class LocationTrackingService {
   /// Capture current location and create update
   Future<void> _captureLocation() async {
     try {
-      if (_currentRider == null) return;
+      if (_currentRider == null || _currentAssignment == null) return;
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: _locationSettings,
@@ -73,55 +83,75 @@ class LocationTrackingService {
 
       // Calculate speed and heading
       final speed = position.speed * 3.6; // Convert m/s to km/h
-      final heading = position.heading; // Already in degrees
+      final heading =
+          position.heading >= 0 ? position.heading : 0.0; // Ensure non-negative
 
       // Calculate ETA to destination if available
       double? estimatedDuration;
-      if (_currentRider!.destinationTerminalLat != null &&
-          _currentRider!.destinationTerminalLng != null) {
-        final terminal = Terminal(
-          id: _currentRider!.destinationTerminal ?? 'unknown',
-          name: _currentRider!.destinationTerminal ?? 'Destination',
-          latitude: _currentRider!.destinationTerminalLat!,
-          longitude: _currentRider!.destinationTerminalLng!,
-        );
-
-        estimatedDuration = ETAService.calculateETAToTerminal(
-          currentLat: position.latitude,
-          currentLng: position.longitude,
-          terminal: terminal,
-          currentSpeed: speed > 0 ? speed : null,
-        );
+      if (_currentAssignment!.destinationTerminalId != null) {
+        // We'll calculate this based on route data
+        // For now, use a simple calculation
+        estimatedDuration = null; // Will be calculated in ETA service
       }
 
       final update = RiderLocationUpdate(
         userId: _currentRider!.id,
-        busId: _currentRider!.busId ?? _currentRider!.busName ?? 'unknown',
-        routeId:
-            _currentRider!.routeId ?? _currentRider!.assignedRoute ?? 'unknown',
-        busRouteAssignmentId: _currentRider!.busRouteId ?? 'unknown',
+        busId: _currentAssignment!.busId,
+        routeId: _currentAssignment!.routeId,
+        busRouteAssignmentId: _currentAssignment!.id,
         latitude: position.latitude,
         longitude: position.longitude,
-        speed: speed,
-        heading: heading >= 0 ? heading : 0, // Handle invalid heading
+        speed: speed >= 0 ? speed : 0.0,
+        heading: heading,
         timestamp: DateTime.now(),
-        accuracy: position.accuracy,
+        accuracy: position.accuracy >= 0 ? position.accuracy : null,
         altitude: position.altitude,
-        destinationTerminalId: _currentRider!.destinationTerminal,
+        destinationTerminalId: _currentAssignment!.destinationTerminalId,
         estimatedDurationMinutes: estimatedDuration,
       );
 
-      _lastPosition = position;
+      // Write to Firebase
+      await _writeToFirebase(update);
+
+      // Emit to stream
       _locationController?.add(update);
 
+      _lastPosition = position;
+
       debugPrint(
-        '📍 Location update: Lat=${position.latitude.toStringAsFixed(6)}, '
-        'Lng=${position.longitude.toStringAsFixed(6)}, '
-        'Speed=${speed.toStringAsFixed(1)} km/h, '
-        'Heading=${heading.toStringAsFixed(0)}°',
+        '📍 Location updated: (${position.latitude}, ${position.longitude})',
       );
+      debugPrint('   Speed: ${speed.toStringAsFixed(1)} km/h');
+      debugPrint('   Heading: ${heading.toStringAsFixed(0)}°');
     } catch (e) {
       debugPrint('❌ Error capturing location: $e');
+    }
+  }
+
+  /// Write location update to Firebase Realtime Database
+  Future<void> _writeToFirebase(RiderLocationUpdate update) async {
+    try {
+      // Structure: /buses/{busId}/location/{userId}
+      final path = 'buses/${update.busId}/location/${update.userId}';
+
+      final data = {
+        'userId': update.userId,
+        'busId': update.busId,
+        'routeId': update.routeId,
+        'busRouteAssignmentId': update.busRouteAssignmentId,
+        'latitude': update.latitude,
+        'longitude': update.longitude,
+        'speed': update.speed,
+        'heading': update.heading,
+        'accuracy': update.accuracy ?? 0,
+        'timestamp': update.timestamp.toIso8601String(),
+      };
+
+      await _dbRef.child(path).set(data);
+
+      debugPrint('✅ Firebase updated: $path');
+    } catch (e) {
+      debugPrint('❌ Error writing to Firebase: $e');
     }
   }
 

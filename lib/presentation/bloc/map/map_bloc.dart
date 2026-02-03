@@ -150,29 +150,37 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   }
 
   List<Bus> _calculateDistancesAndETA(List<Bus> buses, dynamic userLocation) {
-    return buses.map((bus) {
-      final distance = DistanceCalculator.calculate(
-        userLocation.latitude,
-        userLocation.longitude,
-        bus.latitude,
-        bus.longitude,
-      );
+    return buses
+        .where(
+          (bus) =>
+              bus.latitude != null &&
+              bus.longitude != null &&
+              bus.speed != null,
+        )
+        .map((bus) {
+          final distance = DistanceCalculator.calculate(
+            userLocation.latitude,
+            userLocation.longitude,
+            bus.latitude!,
+            bus.longitude!,
+          );
 
-      final eta = DistanceCalculator.calculateETA(distance, bus.speed);
+          final eta = DistanceCalculator.calculateETA(distance, bus.speed!);
 
-      // Calculate direction from user to bus
-      final bearing = DirectionsService.calculateBearing(
-        LatLng(userLocation.latitude, userLocation.longitude),
-        LatLng(bus.latitude, bus.longitude),
-      );
-      final direction = DirectionsService.getDirectionName(bearing);
+          // Calculate direction from user to bus
+          final bearing = DirectionsService.calculateBearing(
+            LatLng(userLocation.latitude, userLocation.longitude),
+            LatLng(bus.latitude!, bus.longitude!),
+          );
+          final direction = DirectionsService.getDirectionName(bearing);
 
-      return bus.copyWith(
-        distanceFromUser: distance,
-        eta: eta,
-        direction: direction,
-      );
-    }).toList();
+          return bus.copyWith(
+            distanceFromUser: distance,
+            eta: eta,
+            direction: direction,
+          );
+        })
+        .toList();
   }
 
   @override

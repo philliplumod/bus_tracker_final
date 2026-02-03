@@ -162,17 +162,19 @@ class _RouteExplorerPageState extends State<RouteExplorerPage> {
 
       // Add buses on this route
       final busesOnRoute = _getBusesOnRoute(_selectedRoute!);
-      for (var bus in busesOnRoute) {
+      for (var bus in busesOnRoute.where(
+        (b) => b.latitude != null && b.longitude != null && b.speed != null,
+      )) {
         markers.add(
           Marker(
             markerId: MarkerId('bus_${bus.id}'),
-            position: LatLng(bus.latitude, bus.longitude),
+            position: LatLng(bus.latitude!, bus.longitude!),
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueBlue,
             ),
             infoWindow: InfoWindow(
               title: bus.busNumber ?? 'Bus ${bus.id}',
-              snippet: 'Speed: ${(bus.speed * 3.6).toStringAsFixed(1)} km/h',
+              snippet: 'Speed: ${(bus.speed! * 3.6).toStringAsFixed(1)} km/h',
             ),
           ),
         );

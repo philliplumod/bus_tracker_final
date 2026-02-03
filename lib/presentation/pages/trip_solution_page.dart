@@ -278,14 +278,14 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
               final distanceFromUser = DistanceCalculator.calculate(
                 state.userLocation.latitude,
                 state.userLocation.longitude,
-                bus.latitude,
-                bus.longitude,
+                bus.latitude!,
+                bus.longitude!,
               );
 
               // Calculate ETA to user's location using actual bus speed
               String etaToUser = 'Calculating...';
-              if (bus.speed > 0) {
-                final etaMinutes = (distanceFromUser / bus.speed) * 60;
+              if ((bus.speed ?? 0) > 0) {
+                final etaMinutes = (distanceFromUser / bus.speed!) * 60;
                 etaToUser = ETAService.formatETA(etaMinutes);
               } else {
                 // Use average speed if bus is stationary
@@ -308,7 +308,7 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
               }
 
               final isMoving =
-                  bus.speed > 1.0; // Consider moving if speed > 1 km/h
+                  (bus.speed ?? 0) > 1.0; // Consider moving if speed > 1 km/h
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -429,7 +429,7 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
                           Icon(Icons.speed, size: 14, color: Colors.grey[700]),
                           const SizedBox(width: 4),
                           Text(
-                            '${bus.speed.toStringAsFixed(1)} km/h',
+                            '${bus.speed?.toStringAsFixed(1) ?? 'N/A'} km/h',
                             style: const TextStyle(fontSize: 12),
                           ),
                           if (state.destinationCoordinates != null) ...[

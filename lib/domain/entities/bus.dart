@@ -3,34 +3,41 @@ import 'package:equatable/equatable.dart';
 class Bus extends Equatable {
   final String id;
   final String? busNumber;
+  final String? name; // Added for API compatibility
   final String? route;
-  final double latitude;
-  final double longitude;
-  final double altitude;
-  final double speed;
-  final String timestamp;
+  final double? latitude; // Made optional for API-only buses
+  final double? longitude;
+  final double? altitude;
+  final double? speed;
+  final String? timestamp;
   final double? distanceFromUser;
   final String? eta;
   final String? direction;
+  final DateTime? createdAt; // Added for API compatibility
+  final DateTime? updatedAt;
 
   const Bus({
     required this.id,
     this.busNumber,
+    this.name,
     this.route,
-    required this.latitude,
-    required this.longitude,
-    required this.altitude,
-    required this.speed,
-    required this.timestamp,
+    this.latitude,
+    this.longitude,
+    this.altitude,
+    this.speed,
+    this.timestamp,
     this.distanceFromUser,
     this.eta,
     this.direction,
+    this.createdAt,
+    this.updatedAt,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'busNumber': busNumber,
+      'name': name,
       'route': route,
       'latitude': latitude,
       'longitude': longitude,
@@ -40,6 +47,8 @@ class Bus extends Equatable {
       'distanceFromUser': distanceFromUser,
       'eta': eta,
       'direction': direction,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
@@ -47,17 +56,35 @@ class Bus extends Equatable {
     return Bus(
       id: json['id'] as String,
       busNumber: json['busNumber'] as String?,
+      name: json['name'] as String?,
       route: json['route'] as String?,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      altitude: (json['altitude'] as num).toDouble(),
-      speed: (json['speed'] as num).toDouble(),
-      timestamp: json['timestamp'] as String,
+      latitude:
+          json['latitude'] != null
+              ? (json['latitude'] as num).toDouble()
+              : null,
+      longitude:
+          json['longitude'] != null
+              ? (json['longitude'] as num).toDouble()
+              : null,
+      altitude:
+          json['altitude'] != null
+              ? (json['altitude'] as num).toDouble()
+              : null,
+      speed: json['speed'] != null ? (json['speed'] as num).toDouble() : null,
+      timestamp: json['timestamp'] as String?,
       distanceFromUser:
           json['distanceFromUser'] != null
               ? (json['distanceFromUser'] as num).toDouble()
               : null,
       eta: json['eta'] as String?,
+      createdAt:
+          json['createdAt'] != null
+              ? DateTime.parse(json['createdAt'] as String)
+              : null,
+      updatedAt:
+          json['updatedAt'] != null
+              ? DateTime.parse(json['updatedAt'] as String)
+              : null,
       direction: json['direction'] as String?,
     );
   }

@@ -25,10 +25,12 @@ class _CompactMapViewState extends State<CompactMapView> {
   void didUpdateWidget(CompactMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedBus != null &&
-        widget.selectedBus != oldWidget.selectedBus) {
+        widget.selectedBus != oldWidget.selectedBus &&
+        widget.selectedBus!.latitude != null &&
+        widget.selectedBus!.longitude != null) {
       final busPosition = LatLng(
-        widget.selectedBus!.latitude,
-        widget.selectedBus!.longitude,
+        widget.selectedBus!.latitude!,
+        widget.selectedBus!.longitude!,
       );
       _moveCameraToBus(busPosition);
     }
@@ -44,10 +46,12 @@ class _CompactMapViewState extends State<CompactMapView> {
     Set<Polyline> polylines = {};
 
     // Show path to selected bus
-    if (widget.selectedBus != null) {
+    if (widget.selectedBus != null &&
+        widget.selectedBus!.latitude != null &&
+        widget.selectedBus!.longitude != null) {
       final busPosition = LatLng(
-        widget.selectedBus!.latitude,
-        widget.selectedBus!.longitude,
+        widget.selectedBus!.latitude!,
+        widget.selectedBus!.longitude!,
       );
       polylines.add(
         Polyline(
@@ -77,10 +81,12 @@ class _CompactMapViewState extends State<CompactMapView> {
     );
 
     // Only show selected bus marker
-    if (widget.selectedBus != null) {
+    if (widget.selectedBus != null &&
+        widget.selectedBus!.latitude != null &&
+        widget.selectedBus!.longitude != null) {
       final busPosition = LatLng(
-        widget.selectedBus!.latitude,
-        widget.selectedBus!.longitude,
+        widget.selectedBus!.latitude!,
+        widget.selectedBus!.longitude!,
       );
       final busLabel = widget.selectedBus!.busNumber ?? widget.selectedBus!.id;
       markers.add(
@@ -93,7 +99,7 @@ class _CompactMapViewState extends State<CompactMapView> {
           infoWindow: InfoWindow(
             title: '🚌 Bus $busLabel',
             snippet:
-                '${widget.selectedBus!.speed.toStringAsFixed(1)} km/h • ${widget.selectedBus!.eta ?? "N/A"}',
+                '${widget.selectedBus!.speed?.toStringAsFixed(1) ?? 'N/A'} km/h • ${widget.selectedBus!.eta ?? "N/A"}',
           ),
         ),
       );

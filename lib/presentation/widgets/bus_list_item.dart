@@ -58,7 +58,7 @@ class BusListItem extends StatelessWidget {
                       children: [
                         _buildInfoChip(
                           Icons.speed,
-                          '${bus.speed.toStringAsFixed(1)} km/h',
+                          '${bus.speed?.toStringAsFixed(1) ?? 'N/A'} km/h',
                         ),
                         const SizedBox(width: 8),
                         if (bus.distanceFromUser != null)

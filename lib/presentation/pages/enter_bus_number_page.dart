@@ -239,7 +239,7 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
       itemCount: state.filteredBuses.length,
       itemBuilder: (context, index) {
         final bus = state.filteredBuses[index];
-        final isMoving = bus.speed > 1.0;
+        final isMoving = (bus.speed ?? 0) > 1.0;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
@@ -339,7 +339,7 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
                     Icon(Icons.speed, size: 14, color: Colors.grey[700]),
                     const SizedBox(width: 4),
                     Text(
-                      '${bus.speed.toStringAsFixed(1)} km/h',
+                      '${bus.speed?.toStringAsFixed(1) ?? 'N/A'} km/h',
                       style: const TextStyle(fontSize: 12),
                     ),
                     if (bus.direction != null) ...[

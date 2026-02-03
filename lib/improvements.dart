@@ -1,9 +1,4 @@
-/// Export file for easy access to all UI/UX improvements
-///
-/// Usage:
-/// ```dart
-/// import 'package:bus_tracker/improvements.dart';
-/// ```
+
 
 // UI Components
 export 'presentation/widgets/common/ui_components.dart';

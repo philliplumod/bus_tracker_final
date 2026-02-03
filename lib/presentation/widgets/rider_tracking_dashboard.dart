@@ -108,7 +108,7 @@ class RiderTrackingDashboard extends StatelessWidget {
                   child: _buildStatCard(
                     icon: Icons.speed,
                     label: 'Current Speed',
-                    value: '${state.speed.toStringAsFixed(1)}',
+                    value: state.speed.toStringAsFixed(1),
                     unit: 'km/h',
                     color: Colors.blue,
                   ),

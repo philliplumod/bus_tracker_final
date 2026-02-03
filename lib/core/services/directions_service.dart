@@ -5,10 +5,9 @@ import 'package:http/http.dart' as http;
 
 /// Service for fetching road-aligned routes using Google Directions API
 class DirectionsService {
-  // TODO: Replace with your actual Google Maps API Key
   // Get one from: https://console.cloud.google.com/apis/credentials
   // Make sure to enable "Directions API" and "Maps SDK for Android/iOS"
-  static const String _apiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
+  static const String _apiKey = 'AIzaSyAG42VZzNCN3FTU7Zr_4pPubGZ_d3QevTI';
 
   final http.Client _client;
 

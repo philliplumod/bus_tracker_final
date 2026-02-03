@@ -183,18 +183,23 @@ class TripSolutionBloc
       // Find buses that are near both user location and destination
       final matchingBuses =
           currentState.allBuses.where((bus) {
+            if (bus.latitude == null ||
+                bus.longitude == null ||
+                bus.speed == null) {
+              return false;
+            }
             final distanceFromUser = DistanceCalculator.calculate(
               currentState.userLocation.latitude,
               currentState.userLocation.longitude,
-              bus.latitude,
-              bus.longitude,
+              bus.latitude!,
+              bus.longitude!,
             );
 
             final distanceFromDestination = DistanceCalculator.calculate(
               destCoords!.latitude,
               destCoords.longitude,
-              bus.latitude,
-              bus.longitude,
+              bus.latitude!,
+              bus.longitude!,
             );
 
             // Bus should be within 3km of user location and 3km of destination
@@ -206,14 +211,14 @@ class TripSolutionBloc
         final distA = DistanceCalculator.calculate(
           currentState.userLocation.latitude,
           currentState.userLocation.longitude,
-          a.latitude,
-          a.longitude,
+          a.latitude!,
+          a.longitude!,
         );
         final distB = DistanceCalculator.calculate(
           currentState.userLocation.latitude,
           currentState.userLocation.longitude,
-          b.latitude,
-          b.longitude,
+          b.latitude!,
+          b.longitude!,
         );
         return distA.compareTo(distB);
       });
