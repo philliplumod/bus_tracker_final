@@ -199,7 +199,6 @@ class _CompactMapViewState extends State<CompactMapView> {
       children: [
         GoogleMap(
           cloudMapId: 'ab6437d57e645dfdb9e48b8f',
-          liteModeEnabled: true,
           onMapCreated: (controller) {
             if (mounted) {
               _mapController = controller;
@@ -215,9 +214,6 @@ class _CompactMapViewState extends State<CompactMapView> {
           myLocationButtonEnabled: true,
           zoomControlsEnabled: false,
           mapToolbarEnabled: false,
-          compassEnabled: false,
-          tiltGesturesEnabled: false,
-          rotateGesturesEnabled: false,
           initialCameraPosition: CameraPosition(
             target: widget.userPosition,
             zoom: AppConstants.defaultZoom,

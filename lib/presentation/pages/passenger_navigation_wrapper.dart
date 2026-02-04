@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'profile_page.dart';
 import 'enter_bus_number_page.dart';
 import 'trip_solution_page.dart';
+import '../bloc/map/map_bloc.dart';
+import '../bloc/map/map_event.dart';
 
 class PassengerNavigationWrapper extends StatefulWidget {
   const PassengerNavigationWrapper({super.key});
@@ -14,6 +17,19 @@ class PassengerNavigationWrapper extends StatefulWidget {
 class _PassengerNavigationWrapperState
     extends State<PassengerNavigationWrapper> {
   int _currentIndex = 1; // Start with Bus Search as the center/default tab
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize MapBloc to load user location for map features
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        debugPrint('🗺️ PassengerNavigationWrapper: Initializing MapBloc');
+        context.read<MapBloc>().add(LoadUserLocation());
+        context.read<MapBloc>().add(SubscribeToBusUpdates());
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

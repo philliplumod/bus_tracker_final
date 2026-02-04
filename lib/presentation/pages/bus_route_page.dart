@@ -4,6 +4,7 @@ import '../../domain/entities/bus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/map/map_bloc.dart';
 import '../bloc/map/map_state.dart';
+import '../bloc/map/map_event.dart';
 
 class BusRoutePage extends StatefulWidget {
   final Bus bus;
@@ -16,6 +17,21 @@ class BusRoutePage extends StatefulWidget {
 
 class _BusRoutePageState extends State<BusRoutePage> {
   GoogleMapController? _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ensure MapBloc has user location loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final mapState = context.read<MapBloc>().state;
+        if (mapState is! MapLoaded) {
+          debugPrint('🗺️ BusRoutePage: Loading user location for map');
+          context.read<MapBloc>().add(LoadUserLocation());
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +126,11 @@ class _BusRoutePageState extends State<BusRoutePage> {
                     widget.bus.latitude != null &&
                     widget.bus.longitude != null) {
                   return GoogleMap(
+                    onMapCreated: (controller) {
+                      if (mounted) {
+                        _mapController = controller;
+                      }
+                    },
                     cloudMapId: 'ab6437d57e645dfdb9e48b8f',
                     initialCameraPosition: CameraPosition(
                       target: LatLng(
@@ -166,12 +187,23 @@ class _BusRoutePageState extends State<BusRoutePage> {
                     myLocationButtonEnabled: true,
                     myLocationEnabled: true,
                     zoomControlsEnabled: true,
-                    onMapCreated: (controller) {
-                      _mapController = controller;
-                    },
                   );
                 }
-                return const Center(child: CircularProgressIndicator());
+
+                // Show loading state with helpful message
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading map...',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
           ),

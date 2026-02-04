@@ -168,11 +168,12 @@ class BusSearchBloc extends HydratedBloc<BusSearchEvent, BusSearchState> {
         ),
       );
     } else {
-      // Initial load
+      // Initial load - Show all buses by default for bus search page
+      // Unlike trip solution, bus search shows all active buses
       emit(
         BusSearchLoaded(
           allBuses: event.buses,
-          filteredBuses: [],
+          filteredBuses: event.buses, // Show all buses initially
           searchQuery: '',
           hasSearched: false,
         ),
