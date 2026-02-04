@@ -26,8 +26,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   // NOTE: Rider accounts CANNOT be created through signup.
   // Riders are created by Admin through the web dashboard only.
 
-  // Production API URL
-  static const String baseUrl = 'https://bustrackingdashboard.vercel.app/api';
+  // For Android Emulator, use: http://10.0.2.2:3000/api
+  // For iOS Simulator, use: http://localhost:3000/api
+  // For physical device via USB/ADB, use: http://localhost:3000/api (after: adb reverse tcp:3000 tcp:3000)
+  // For physical device via Wi-Fi, use your computer's IP: http://192.168.x.x:3000/api
+  // For production, use: https://your-production-domain.com/api
+  static const String baseUrl = 'http://localhost:3000/api';
   final http.Client client;
   final SharedPreferences prefs;
   final ApiClient apiClient;
