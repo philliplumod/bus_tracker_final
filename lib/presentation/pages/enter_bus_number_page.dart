@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../core/utils/distance_calculator.dart';
-import '../../core/utils/location_service.dart';
 import '../bloc/bus_search/bus_search_bloc.dart';
 import '../bloc/bus_search/bus_search_event.dart';
 import '../bloc/bus_search/bus_search_state.dart';
@@ -51,6 +50,16 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
     } catch (e) {
       // Use default location if unable to get user location
       debugPrint('Error getting user location: $e');
+    }
+  }
+
+  String _formatETA(double minutes) {
+    if (minutes < 60) {
+      return '${minutes.round()} min';
+    } else {
+      final hours = minutes ~/ 60;
+      final mins = (minutes % 60).round();
+      return '${hours}h ${mins}m';
     }
   }
 
@@ -256,6 +265,7 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
         // Calculate distance and ETA if user position is available
         String? eta;
         double? distanceFromUser;
+        String speed = 'N/A';
         if (_userPosition != null &&
             bus.latitude != null &&
             bus.longitude != null) {
@@ -265,13 +275,17 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
             bus.latitude!,
             bus.longitude!,
           );
-          eta = LocationService.calculateETA(
-            userLat: _userPosition!.latitude,
-            userLon: _userPosition!.longitude,
-            busLat: bus.latitude!,
-            busLon: bus.longitude!,
-            busSpeed: bus.speed,
-          );
+          // Calculate ETA using actual bus speed
+          if ((bus.speed ?? 0) > 0) {
+            final etaMinutes = (distanceFromUser / bus.speed!) * 60;
+            eta = _formatETA(etaMinutes);
+            speed = '${bus.speed!.toStringAsFixed(1)} km/h';
+          } else {
+            // Use average speed if bus is stationary
+            final etaMinutes = (distanceFromUser / 30) * 60;
+            eta = '~${_formatETA(etaMinutes)}';
+            speed = '0.0 km/h';
+          }
         }
 
         return Card(
@@ -357,14 +371,6 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                  )
-                else
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Route: Not specified',
-                      style: TextStyle(fontSize: 13),
-                    ),
                   ),
                 const SizedBox(height: 6),
                 // Distance and ETA row
@@ -396,43 +402,17 @@ class _EnterBusNumberPageState extends State<EnterBusNumberPage> {
                         ),
                       ),
                     ],
-                  )
-                else if (distanceFromUser != null)
+                  ),
+                if (distanceFromUser != null && eta != null)
+                  const SizedBox(height: 4),
+                if (distanceFromUser != null && eta != null)
                   Row(
                     children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 14,
-                        color: Colors.blue[700],
-                      ),
+                      Icon(Icons.speed, size: 14, color: Colors.grey[700]),
                       const SizedBox(width: 4),
-                      Text(
-                        '${distanceFromUser.toStringAsFixed(2)} km away',
-                        style: const TextStyle(fontSize: 12),
-                      ),
+                      Text(speed, style: const TextStyle(fontSize: 12)),
                     ],
                   ),
-                const SizedBox(height: 4),
-                // Speed and direction row
-                Row(
-                  children: [
-                    Icon(Icons.speed, size: 14, color: Colors.grey[700]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${bus.speed?.toStringAsFixed(1) ?? 'N/A'} km/h',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    if (bus.direction != null) ...[
-                      const SizedBox(width: 12),
-                      Icon(Icons.explore, size: 14, color: Colors.blue[700]),
-                      const SizedBox(width: 4),
-                      Text(
-                        bus.direction!,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ],
-                ),
               ],
             ),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),

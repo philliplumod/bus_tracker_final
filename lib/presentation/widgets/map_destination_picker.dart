@@ -128,6 +128,8 @@ class _MapDestinationPickerState extends State<MapDestinationPicker> {
             myLocationButtonEnabled: true,
             zoomControlsEnabled: true,
             mapToolbarEnabled: false,
+            compassEnabled: false,
+            tiltGesturesEnabled: false,
           ),
           // Info card at bottom
           Positioned(

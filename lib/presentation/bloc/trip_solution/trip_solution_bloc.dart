@@ -227,8 +227,9 @@ class TripSolutionBloc
                 bus.longitude!,
               );
 
-              // Bus should be within 5km of user OR within 5km of destination
-              return distanceFromUser <= 5.0 || distanceFromDestination <= 5.0;
+              // Bus must be within 10km of BOTH user AND destination
+              return distanceFromUser <= 10.0 &&
+                  distanceFromDestination <= 10.0;
             }).toList();
 
         // Sort by distance from user
@@ -297,13 +298,26 @@ class TripSolutionBloc
         if (destCoords == null) {
           debugPrint('🗺️ Geocoding location: $destination');
 
-          // Try geocoding with "Cebu" context for better results
-          final searchQuery =
-              destination.contains('Cebu')
-                  ? destination
-                  : '$destination, Cebu City, Philippines';
+          // First try direct search without forcing Cebu context
+          List<Location> locations = [];
 
-          final locations = await locationFromAddress(searchQuery);
+          try {
+            locations = await locationFromAddress(destination);
+          } catch (e) {
+            debugPrint('⚠️ Direct geocoding failed: $e');
+          }
+
+          // If no results or outside Cebu, try with Cebu context
+          if (locations.isEmpty &&
+              !destination.toLowerCase().contains('cebu')) {
+            debugPrint('🔄 Retrying with Cebu context...');
+            try {
+              final cebuQuery = '$destination, Cebu City, Philippines';
+              locations = await locationFromAddress(cebuQuery);
+            } catch (e) {
+              debugPrint('⚠️ Cebu-context geocoding failed: $e');
+            }
+          }
 
           if (locations.isNotEmpty) {
             destCoords = LatLng(

@@ -316,7 +316,7 @@ class _TripSolutionPageState extends State<TripSolutionPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Buses must be within 5km of your location or destination.\n\nThis could mean:\n• No buses are currently active\n• No buses are traveling this route right now\n• Try a different location',
+                'No buses found within 10km of both your location and "${state.searchQuery}".\n\nThis means:\n• No buses are currently serving this route\n• Try a different destination\n• Check again later when more buses are active',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
