@@ -132,9 +132,13 @@ class DependencyInjection {
     final prefs = await SharedPreferences.getInstance();
 
     // Initialize API services
-    // Production API URL
+    // TODO: Replace with your actual backend URL
+    // For physical device: Use your computer's local IP (e.g., 'http://192.168.1.100:3000')
+    // For emulator: Use 'http://10.0.2.2:3000'
+    // Or use adb reverse: adb reverse tcp:3000 tcp:3000
     apiClient = ApiClient(
-      baseUrl: 'https://bustrackingdashboard.vercel.app',
+      baseUrl:
+          'http://localhost:3000', // Change this to your computer's IP for physical devices
       client: http.Client(),
     );
     backendApiService = BackendApiService(apiClient: apiClient);
