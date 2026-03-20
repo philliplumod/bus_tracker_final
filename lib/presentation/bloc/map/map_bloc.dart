@@ -21,7 +21,8 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   final route_service.DirectionsService directionsService;
 
   StreamSubscription? _busUpdateSubscription;
-  final Set<String> _notifiedBuses = {};
+  final Set<String> _notifiedNearbyBuses = {};
+  final Set<String> _notifiedArrivedBuses = {};
 
   MapBloc({
     required this.getUserLocation,
@@ -96,16 +97,37 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       currentState.userLocation,
     );
 
-    // Check for nearby buses and send notifications
+    // Check for distance-to-passenger notifications and send updates
     for (final bus in busesWithDistance) {
-      if (bus.distanceFromUser != null &&
-          bus.distanceFromUser! < AppConstants.nearbyBusThreshold &&
-          !_notifiedBuses.contains(bus.id)) {
+      final distanceFromPassenger = bus.distanceFromUser;
+      if (distanceFromPassenger == null) continue;
+
+      if (distanceFromPassenger <= AppConstants.nearbyBusThreshold &&
+          !_notifiedNearbyBuses.contains(bus.id)) {
         NotificationService.showNotification(
           AppConstants.nearbyBusTitle,
           AppConstants.nearbyBusMessage(bus.id),
+          id: _notificationId(bus.id, 'nearby'),
         );
-        _notifiedBuses.add(bus.id);
+        _notifiedNearbyBuses.add(bus.id);
+      }
+
+      if (distanceFromPassenger <= AppConstants.arrivedBusThreshold &&
+          !_notifiedArrivedBuses.contains(bus.id)) {
+        NotificationService.showNotification(
+          AppConstants.arrivedBusTitle,
+          AppConstants.arrivedBusMessage(bus.id),
+          id: _notificationId(bus.id, 'arrived'),
+        );
+        _notifiedArrivedBuses.add(bus.id);
+      }
+
+      if (distanceFromPassenger > AppConstants.nearbyBusThreshold) {
+        _notifiedNearbyBuses.remove(bus.id);
+      }
+
+      if (distanceFromPassenger > AppConstants.arrivedBusThreshold) {
+        _notifiedArrivedBuses.remove(bus.id);
       }
     }
 
@@ -201,6 +223,11 @@ class MapBloc extends Bloc<MapEvent, MapState> {
           );
         })
         .toList();
+  }
+
+  int _notificationId(String busId, String eventType) {
+    final hash = '$busId:$eventType'.hashCode;
+    return hash & 0x7fffffff;
   }
 
   @override

@@ -15,7 +15,11 @@ class NotificationService {
     await _notificationsPlugin.initialize(settings);
   }
 
-  static Future<void> showNotification(String title, String body) async {
+  static Future<void> showNotification(
+    String title,
+    String body, {
+    int id = 0,
+  }) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
           'bus_tracker_channel',
@@ -28,6 +32,6 @@ class NotificationService {
       android: androidDetails,
     );
 
-    await _notificationsPlugin.show(0, title, body, details);
+    await _notificationsPlugin.show(id, title, body, details);
   }
 }

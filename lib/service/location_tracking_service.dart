@@ -9,11 +9,12 @@ import '../domain/entities/user_assignment.dart';
 import '../domain/entities/terminal.dart';
 import '../core/services/firebase_realtime_service.dart';
 
-/// Service to manage periodic location tracking for riders with Firebase sync
+/// Service to manage real-time location tracking for riders with Firebase sync
 class LocationTrackingService {
-  Timer? _trackingTimer;
+  StreamSubscription<Position>? _positionSubscription;
   StreamController<RiderLocationUpdate>? _locationController;
   Position? _lastPosition;
+  bool _isTrackingActive = false;
   User? _currentRider;
   UserAssignment? _currentAssignment;
   Terminal? _startingTerminal;
@@ -21,10 +22,9 @@ class LocationTrackingService {
   final DatabaseReference _dbRef;
   final FirebaseRealtimeService _firebaseService;
 
-  static const Duration _updateInterval = Duration(seconds: 2); // 2 seconds
   static const LocationSettings _locationSettings = LocationSettings(
-    accuracy: LocationAccuracy.high,
-    distanceFilter: 5, // Update when moved 5 meters
+    accuracy: LocationAccuracy.bestForNavigation,
+    distanceFilter: 0,
   );
 
   LocationTrackingService({
@@ -64,7 +64,7 @@ class LocationTrackingService {
   }) async {
     debugPrint('🚀 LocationTrackingService.startTracking called');
 
-    if (_trackingTimer != null) {
+    if (_isTrackingActive) {
       debugPrint('⚠️ Location tracking already active');
       return;
     }
@@ -75,13 +75,19 @@ class LocationTrackingService {
     _destinationTerminal = destinationTerminal;
     _locationController = StreamController<RiderLocationUpdate>.broadcast();
 
-    debugPrint('   Timer status before: ${_trackingTimer?.isActive ?? false}');
+    debugPrint('   Tracking status before: $_isTrackingActive');
     debugPrint('   Controller created: ${_locationController != null}');
 
     // Check and request permissions
     final permission = await _checkAndRequestPermissions();
     if (!permission) {
       debugPrint('❌ Location permissions denied');
+      _locationController?.close();
+      _locationController = null;
+      _currentRider = null;
+      _currentAssignment = null;
+      _startingTerminal = null;
+      _destinationTerminal = null;
       throw Exception('Location permissions denied');
     }
 
@@ -91,28 +97,35 @@ class LocationTrackingService {
     debugPrint('   Route: ${assignment.routeName} (ID: ${assignment.routeId})');
     debugPrint('   Assignment ID: ${assignment.id}');
 
-    // Start periodic updates every 2 seconds
-    _trackingTimer = Timer.periodic(_updateInterval, (_) {
-      debugPrint('⏰ Timer fired, calling _captureLocation');
-      _captureLocation();
-    });
+    // Start continuous location stream updates
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: _locationSettings,
+    ).listen(
+      _handlePosition,
+      onError: (error) {
+        debugPrint('❌ Position stream error: $error');
+      },
+    );
+    _isTrackingActive = true;
 
-    debugPrint('   Timer started: ${_trackingTimer?.isActive ?? false}');
-    debugPrint('   Update interval: ${_updateInterval.inSeconds} seconds');
+    debugPrint(
+      '   Position stream subscribed: ${_positionSubscription != null}',
+    );
 
     // Capture first location immediately
     debugPrint('📍 Capturing initial location...');
-    await _captureLocation();
+    await _captureCurrentLocation();
   }
 
   /// Stop tracking location
   void stopTracking() {
     debugPrint('🛑 Stopping location tracking');
-    _trackingTimer?.cancel();
-    _trackingTimer = null;
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
     _locationController?.close();
     _locationController = null;
     _lastPosition = null;
+    _isTrackingActive = false;
     _currentRider = null;
     _currentAssignment = null;
     _startingTerminal = null;
@@ -124,12 +137,12 @@ class LocationTrackingService {
       _locationController?.stream;
 
   /// Check if tracking is active
-  bool get isTracking => _trackingTimer != null && _trackingTimer!.isActive;
+  bool get isTracking => _isTrackingActive;
 
-  /// Capture current location and create update
-  Future<void> _captureLocation() async {
+  /// Capture one location immediately and process it
+  Future<void> _captureCurrentLocation() async {
     try {
-      debugPrint('📍 _captureLocation called');
+      debugPrint('📍 _captureCurrentLocation called');
 
       if (_currentRider == null || _currentAssignment == null) {
         debugPrint(
@@ -152,79 +165,72 @@ class LocationTrackingService {
         },
       );
 
-      debugPrint(
-        '   ✅ Position obtained: (${position.latitude}, ${position.longitude})',
-      );
-      debugPrint('   Accuracy: ${position.accuracy.toStringAsFixed(1)}m');
-
-      // Calculate speed and heading
-      final speed = position.speed * 3.6; // Convert m/s to km/h
-      final heading =
-          position.heading >= 0 ? position.heading : 0.0; // Ensure non-negative
-
-      // Calculate ETA to destination if available
-      double? estimatedDuration;
-      if (_currentAssignment!.destinationTerminalId != null) {
-        // We'll calculate this based on route data
-        // For now, use a simple calculation
-        estimatedDuration = null; // Will be calculated in ETA service
-      }
-
-      final update = RiderLocationUpdate(
-        userId: _currentRider!.id,
-        userName: _currentRider!.name,
-        busName:
-            _currentAssignment!.busName ??
-            _currentRider!.busName ??
-            'Unknown Bus',
-        routeName:
-            _currentAssignment!.routeName ??
-            _currentRider!.assignedRoute ??
-            'Unknown Route',
-        busRouteAssignmentId: _currentAssignment!.id,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        speed: speed >= 0 ? speed : 0.0,
-        heading: heading,
-        timestamp: DateTime.now(),
-        accuracy: position.accuracy >= 0 ? position.accuracy : null,
-        altitude: position.altitude,
-        destinationTerminal: _currentRider!.destinationTerminal,
-        estimatedDurationMinutes: estimatedDuration,
-        // Starting terminal information
-        startingTerminalName:
-            _startingTerminal?.name ?? _currentAssignment!.startingTerminalName,
-        startingTerminalLat: _startingTerminal?.latitude,
-        startingTerminalLng: _startingTerminal?.longitude,
-        // Destination terminal information
-        destinationTerminalName:
-            _destinationTerminal?.name ??
-            _currentAssignment!.destinationTerminalName,
-        destinationTerminalLat: _destinationTerminal?.latitude,
-        destinationTerminalLng: _destinationTerminal?.longitude,
-      );
-
-      debugPrint('📍 Creating location update:');
-      debugPrint('   User: ${update.userName}');
-      debugPrint('   Bus: ${update.busName}');
-      debugPrint('   Route: ${update.routeName}');
-      debugPrint('   Starting: ${update.startingTerminalName}');
-      debugPrint('   Destination: ${update.destinationTerminalName}');
-
-      // Emit to stream (Firebase storage handled by bloc through use case)
-      _locationController?.add(update);
-
-      _lastPosition = position;
-
-      debugPrint(
-        '📍 Location updated: (${position.latitude}, ${position.longitude})',
-      );
-      debugPrint('   Speed: ${speed.toStringAsFixed(1)} km/h');
-      debugPrint('   Heading: ${heading.toStringAsFixed(0)}°');
+      _handlePosition(position);
     } catch (e, stackTrace) {
       debugPrint('❌ Error capturing location: $e');
       debugPrint('   Stack trace: $stackTrace');
     }
+  }
+
+  void _handlePosition(Position position) {
+    if (_currentRider == null || _currentAssignment == null) {
+      debugPrint('⚠️ No current rider or assignment, skipping location update');
+      return;
+    }
+
+    debugPrint(
+      '   ✅ Position received: (${position.latitude}, ${position.longitude})',
+    );
+    debugPrint('   Accuracy: ${position.accuracy.toStringAsFixed(1)}m');
+
+    final speed = position.speed * 3.6;
+    final heading = position.heading >= 0 ? position.heading : 0.0;
+
+    double? estimatedDuration;
+    if (_currentAssignment!.destinationTerminalId != null) {
+      estimatedDuration = null;
+    }
+
+    final update = RiderLocationUpdate(
+      userId: _currentRider!.id,
+      userName: _currentRider!.name,
+      busName:
+          _currentAssignment!.busName ??
+          _currentRider!.busName ??
+          'Unknown Bus',
+      routeName:
+          _currentAssignment!.routeName ??
+          _currentRider!.assignedRoute ??
+          'Unknown Route',
+      busRouteAssignmentId: _currentAssignment!.id,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      speed: speed >= 0 ? speed : 0.0,
+      heading: heading,
+      timestamp: DateTime.now(),
+      accuracy: position.accuracy >= 0 ? position.accuracy : null,
+      altitude: position.altitude,
+      destinationTerminal: _currentRider!.destinationTerminal,
+      estimatedDurationMinutes: estimatedDuration,
+      startingTerminalName:
+          _startingTerminal?.name ?? _currentAssignment!.startingTerminalName,
+      startingTerminalLat: _startingTerminal?.latitude,
+      startingTerminalLng: _startingTerminal?.longitude,
+      destinationTerminalName:
+          _destinationTerminal?.name ??
+          _currentAssignment!.destinationTerminalName,
+      destinationTerminalLat: _destinationTerminal?.latitude,
+      destinationTerminalLng: _destinationTerminal?.longitude,
+    );
+
+    _locationController?.add(update);
+    _lastPosition = position;
+
+    debugPrint(
+      '📍 Location updated: (${position.latitude}, ${position.longitude})',
+    );
+    debugPrint('   Speed: ${speed.toStringAsFixed(1)} km/h');
+    debugPrint('   Heading: ${heading.toStringAsFixed(0)}°');
   }
 
   /// Check and request location permissions

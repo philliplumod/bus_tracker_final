@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../core/constants/app_constants.dart';
 import '../../domain/entities/bus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/map/map_bloc.dart';
@@ -18,6 +19,32 @@ class BusRoutePage extends StatefulWidget {
 class _BusRoutePageState extends State<BusRoutePage> {
   GoogleMapController? _mapController;
 
+  Bus _getLiveBus(MapState state) {
+    if (state is MapLoaded) {
+      for (final bus in state.buses) {
+        if (bus.id == widget.bus.id) {
+          return bus;
+        }
+      }
+    }
+    return widget.bus;
+  }
+
+  String _buildArrivalStatus(Bus bus) {
+    final distance = bus.distanceFromUser;
+    if (distance == null) {
+      return 'Arrival status unavailable';
+    }
+
+    if (distance <= AppConstants.arrivedBusThreshold) {
+      return 'Arrived at your location';
+    }
+    if (distance <= AppConstants.nearbyBusThreshold) {
+      return 'Bus is nearby';
+    }
+    return 'Bus is on the way';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +56,7 @@ class _BusRoutePageState extends State<BusRoutePage> {
           debugPrint('🗺️ BusRoutePage: Loading user location for map');
           context.read<MapBloc>().add(LoadUserLocation());
         }
+        context.read<MapBloc>().add(SubscribeToBusUpdates());
       }
     });
   }
@@ -43,89 +71,137 @@ class _BusRoutePageState extends State<BusRoutePage> {
               : 'Bus ${widget.bus.id}',
         ),
       ),
-      body: Column(
-        children: [
-          // Bus info card
-          Card(
-            margin: const EdgeInsets.all(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      body: BlocBuilder<MapBloc, MapState>(
+        builder: (context, state) {
+          final liveBus = _getLiveBus(state);
+          return Column(
+            children: [
+              // Bus info card
+              Card(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.directions_bus,
-                          color: Colors.white,
-                          size: 28,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).primaryColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.directions_bus,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  liveBus.busNumber != null
+                                      ? 'Bus ${liveBus.busNumber}'
+                                      : 'Bus ${liveBus.id}',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (liveBus.route != null)
+                                  Text(
+                                    'Route: ${liveBus.route}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
+                      const Divider(height: 24),
+                      _buildInfoRow(
+                        Icons.speed,
+                        'Speed',
+                        '${liveBus.speed?.toStringAsFixed(1) ?? 'N/A'} km/h',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildInfoRow(
+                        Icons.location_on,
+                        'Location',
+                        '${liveBus.latitude?.toStringAsFixed(6) ?? 'N/A'}, ${liveBus.longitude?.toStringAsFixed(6) ?? 'N/A'}',
+                      ),
+                      if (liveBus.distanceFromUser != null) ...[
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                          Icons.social_distance,
+                          'Distance',
+                          '${liveBus.distanceFromUser!.toStringAsFixed(2)} km',
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              // Passenger arrival ETA widget
+              Card(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                color: Colors.blue.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.schedule, color: Colors.blue.shade700),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              widget.bus.busNumber != null
-                                  ? 'Bus ${widget.bus.busNumber}'
-                                  : 'Bus ${widget.bus.id}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                            const Text(
+                              'Arrival to your location',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
                               ),
                             ),
-                            if (widget.bus.route != null)
-                              Text(
-                                'Route: ${widget.bus.route}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
+                            const SizedBox(height: 4),
+                            Text(
+                              liveBus.eta ?? 'ETA unavailable',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
                               ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _buildArrivalStatus(liveBus),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blueGrey.shade700,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const Divider(height: 24),
-                  _buildInfoRow(
-                    Icons.speed,
-                    'Speed',
-                    '${widget.bus.speed?.toStringAsFixed(1) ?? 'N/A'} km/h',
-                  ),
-                  const SizedBox(height: 8),
-                  _buildInfoRow(
-                    Icons.location_on,
-                    'Location',
-                    '${widget.bus.latitude?.toStringAsFixed(6) ?? 'N/A'}, ${widget.bus.longitude?.toStringAsFixed(6) ?? 'N/A'}',
-                  ),
-                  if (widget.bus.distanceFromUser != null) ...[
-                    const SizedBox(height: 8),
-                    _buildInfoRow(
-                      Icons.social_distance,
-                      'Distance',
-                      '${widget.bus.distanceFromUser!.toStringAsFixed(2)} km',
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ),
-          // Map view
-          Expanded(
-            child: BlocBuilder<MapBloc, MapState>(
-              builder: (context, state) {
-                if (state is MapLoaded &&
-                    widget.bus.latitude != null &&
-                    widget.bus.longitude != null) {
-                  return GoogleMap(
+
+              // Map view
+              Expanded(
+                child:
+                    state is MapLoaded &&
+                            liveBus.latitude != null &&
+                            liveBus.longitude != null
+                        ? GoogleMap(
                     onMapCreated: (controller) {
                       if (mounted) {
                         _mapController = controller;
@@ -134,27 +210,27 @@ class _BusRoutePageState extends State<BusRoutePage> {
                     cloudMapId: 'ab6437d57e645dfdb9e48b8f',
                     initialCameraPosition: CameraPosition(
                       target: LatLng(
-                        widget.bus.latitude!,
-                        widget.bus.longitude!,
+                        liveBus.latitude!,
+                        liveBus.longitude!,
                       ),
                       zoom: 15.0,
                     ),
                     markers: {
                       Marker(
-                        markerId: MarkerId(widget.bus.id),
+                        markerId: MarkerId(liveBus.id),
                         position: LatLng(
-                          widget.bus.latitude!,
-                          widget.bus.longitude!,
+                          liveBus.latitude!,
+                          liveBus.longitude!,
                         ),
                         icon: BitmapDescriptor.defaultMarkerWithHue(
                           BitmapDescriptor.hueBlue,
                         ),
                         infoWindow: InfoWindow(
                           title:
-                              widget.bus.busNumber != null
-                                  ? 'Bus ${widget.bus.busNumber}'
-                                  : 'Bus ${widget.bus.id}',
-                          snippet: widget.bus.route ?? 'Route not specified',
+                              liveBus.busNumber != null
+                                  ? 'Bus ${liveBus.busNumber}'
+                                  : 'Bus ${liveBus.id}',
+                          snippet: liveBus.route ?? 'Route not specified',
                         ),
                       ),
                       Marker(
@@ -177,7 +253,7 @@ class _BusRoutePageState extends State<BusRoutePage> {
                             state.userLocation.latitude,
                             state.userLocation.longitude,
                           ),
-                          LatLng(widget.bus.latitude!, widget.bus.longitude!),
+                          LatLng(liveBus.latitude!, liveBus.longitude!),
                         ],
                         color: Theme.of(context).primaryColor,
                         width: 3,
@@ -187,27 +263,27 @@ class _BusRoutePageState extends State<BusRoutePage> {
                     myLocationButtonEnabled: true,
                     myLocationEnabled: true,
                     zoomControlsEnabled: true,
-                  );
-                }
-
-                // Show loading state with helpful message
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Loading map...',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+                  )
+                        : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Loading map...',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
