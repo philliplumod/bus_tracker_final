@@ -202,68 +202,73 @@ class _BusRoutePageState extends State<BusRoutePage> {
                             liveBus.latitude != null &&
                             liveBus.longitude != null
                         ? GoogleMap(
-                    onMapCreated: (controller) {
-                      if (mounted) {
-                        _mapController = controller;
-                      }
-                    },
-                    cloudMapId: 'ab6437d57e645dfdb9e48b8f',
-                    initialCameraPosition: CameraPosition(
-                      target: LatLng(
-                        liveBus.latitude!,
-                        liveBus.longitude!,
-                      ),
-                      zoom: 15.0,
-                    ),
-                    markers: {
-                      Marker(
-                        markerId: MarkerId(liveBus.id),
-                        position: LatLng(
-                          liveBus.latitude!,
-                          liveBus.longitude!,
-                        ),
-                        icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueBlue,
-                        ),
-                        infoWindow: InfoWindow(
-                          title:
-                              liveBus.busNumber != null
-                                  ? 'Bus ${liveBus.busNumber}'
-                                  : 'Bus ${liveBus.id}',
-                          snippet: liveBus.route ?? 'Route not specified',
-                        ),
-                      ),
-                      Marker(
-                        markerId: const MarkerId('user'),
-                        position: LatLng(
-                          state.userLocation.latitude,
-                          state.userLocation.longitude,
-                        ),
-                        icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueRed,
-                        ),
-                        infoWindow: const InfoWindow(title: 'Your Location'),
-                      ),
-                    },
-                    polylines: {
-                      Polyline(
-                        polylineId: const PolylineId('route'),
-                        points: [
-                          LatLng(
-                            state.userLocation.latitude,
-                            state.userLocation.longitude,
+                          onMapCreated: (controller) {
+                            if (mounted) {
+                              _mapController = controller;
+                            }
+                          },
+                          cloudMapId: 'ab6437d57e645dfdb9e48b8f',
+                          initialCameraPosition: CameraPosition(
+                            target: LatLng(
+                              liveBus.latitude!,
+                              liveBus.longitude!,
+                            ),
+                            zoom: 15.0,
                           ),
-                          LatLng(liveBus.latitude!, liveBus.longitude!),
-                        ],
-                        color: Theme.of(context).primaryColor,
-                        width: 3,
-                        patterns: [PatternItem.dash(20), PatternItem.gap(10)],
-                      ),
-                    },
-                    myLocationButtonEnabled: true,
-                    myLocationEnabled: true,
-                    zoomControlsEnabled: true,
-                  )
+                          markers: {
+                            Marker(
+                              markerId: MarkerId(liveBus.id),
+                              position: LatLng(
+                                liveBus.latitude!,
+                                liveBus.longitude!,
+                              ),
+                              icon: BitmapDescriptor.defaultMarkerWithHue(
+                                BitmapDescriptor.hueBlue,
+                              ),
+                              infoWindow: InfoWindow(
+                                title:
+                                    liveBus.busNumber != null
+                                        ? 'Bus ${liveBus.busNumber}'
+                                        : 'Bus ${liveBus.id}',
+                                snippet: liveBus.route ?? 'Route not specified',
+                              ),
+                            ),
+                            Marker(
+                              markerId: const MarkerId('user'),
+                              position: LatLng(
+                                state.userLocation.latitude,
+                                state.userLocation.longitude,
+                              ),
+                              icon: BitmapDescriptor.defaultMarkerWithHue(
+                                BitmapDescriptor.hueRed,
+                              ),
+                              infoWindow: const InfoWindow(
+                                title: 'Your Location',
+                              ),
+                            ),
+                          },
+                          polylines: {
+                            Polyline(
+                              polylineId: const PolylineId('route'),
+                              points: [
+                                LatLng(
+                                  state.userLocation.latitude,
+                                  state.userLocation.longitude,
+                                ),
+                                LatLng(liveBus.latitude!, liveBus.longitude!),
+                              ],
+                              color: Theme.of(context).primaryColor,
+                              width: 3,
+                              patterns: [
+                                PatternItem.dash(20),
+                                PatternItem.gap(10),
+                              ],
+                            ),
+                          },
+                          myLocationButtonEnabled: true,
+                          myLocationEnabled: true,
+                          zoomControlsEnabled: true,
+                        )
                         : Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
