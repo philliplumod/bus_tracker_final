@@ -346,7 +346,7 @@ class _CompactMapViewState extends State<CompactMapView> {
                         const Icon(Icons.speed, color: Colors.green, size: 24),
                         const SizedBox(height: 4),
                         Text(
-                          '${widget.selectedBus!.speed?.toStringAsFixed(0) ?? '0'}',
+                          widget.selectedBus!.speed?.toStringAsFixed(0) ?? '0',
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,

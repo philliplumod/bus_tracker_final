@@ -62,9 +62,11 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
         case 'unauthenticated':
           return AuthUnauthenticated();
         case 'loading':
-          return AuthLoading();
+          // Loading is transient and should never be restored from disk.
+          return AuthInitial();
         case 'error':
-          return AuthError(json['message'] as String? ?? 'Unknown error');
+          // Error is transient and should never be restored from disk.
+          return AuthInitial();
         case 'initial':
         default:
           return AuthInitial();
@@ -77,7 +79,12 @@ class AuthBloc extends HydratedBloc<AuthEvent, AuthState> {
   @override
   Map<String, dynamic>? toJson(AuthState state) {
     try {
-      return state.toJson();
+      if (state is AuthAuthenticated || state is AuthUnauthenticated) {
+        return state.toJson();
+      }
+
+      // Do not persist transient states (initial/loading/error).
+      return null;
     } catch (e) {
       return null;
     }

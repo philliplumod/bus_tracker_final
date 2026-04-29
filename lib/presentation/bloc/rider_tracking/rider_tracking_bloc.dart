@@ -20,6 +20,8 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
   final RouteRepository routeRepository;
   final ApiClient apiClient;
   StreamSubscription<RiderLocationUpdate>? _locationSubscription;
+  Timer? _startupTimeoutTimer;
+  bool _hasReceivedFirstLocation = false;
 
   RiderTrackingBloc({
     required this.locationService,
@@ -31,6 +33,7 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
     debugPrint('🏗️ RiderTrackingBloc created - Initial state set');
     on<StartTracking>(_onStartTracking);
     on<StopTracking>(_onStopTracking);
+    on<TrackingStartupTimedOut>(_onTrackingStartupTimedOut);
     on<LocationUpdateReceived>(_onLocationUpdateReceived);
   }
 
@@ -43,6 +46,16 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
     debugPrint('   Current state before processing: ${state.runtimeType}');
 
     try {
+      // Reset any previous subscriptions/timers before starting a new session.
+      await _locationSubscription?.cancel();
+      _locationSubscription = null;
+      _startupTimeoutTimer?.cancel();
+      _hasReceivedFirstLocation = false;
+
+      if (locationService.isTracking) {
+        locationService.stopTracking();
+      }
+
       // Emit loading state immediately
       debugPrint('🔄 Emitting RiderTrackingLoading state...');
       emit(RiderTrackingLoading());
@@ -201,6 +214,9 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
       // Subscribe to location updates
       _locationSubscription = locationService.locationStream?.listen(
         (update) async {
+          _hasReceivedFirstLocation = true;
+          _startupTimeoutTimer?.cancel();
+
           // Store location in Firebase
           final result = await storeRiderLocation(update);
 
@@ -223,13 +239,42 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
         },
         onError: (error) {
           debugPrint('❌ Location stream error: $error');
+          _startupTimeoutTimer?.cancel();
           add(const StopTracking());
         },
       );
+
+      // Fail fast if no first location arrives after startup.
+      _startupTimeoutTimer = Timer(const Duration(seconds: 15), () {
+        if (!_hasReceivedFirstLocation) {
+          add(const TrackingStartupTimedOut());
+        }
+      });
     } catch (e) {
       debugPrint('❌ Error starting tracking: $e');
+      _startupTimeoutTimer?.cancel();
       emit(RiderTrackingError('Failed to start tracking: $e'));
     }
+  }
+
+  Future<void> _onTrackingStartupTimedOut(
+    TrackingStartupTimedOut event,
+    Emitter<RiderTrackingState> emit,
+  ) async {
+    if (state is! RiderTrackingLoading) return;
+
+    debugPrint('⏱️ Rider tracking startup timed out: no location update');
+
+    await _locationSubscription?.cancel();
+    _locationSubscription = null;
+    locationService.stopTracking();
+
+    emit(
+      const RiderTrackingError(
+        'Could not get your current location in time.\n\n'
+        'Please check GPS/location permission and try again.',
+      ),
+    );
   }
 
   Future<void> _onStopTracking(
@@ -237,6 +282,9 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
     Emitter<RiderTrackingState> emit,
   ) async {
     debugPrint('🛑 Stopping rider tracking');
+
+    _startupTimeoutTimer?.cancel();
+    _hasReceivedFirstLocation = false;
 
     await _locationSubscription?.cancel();
     _locationSubscription = null;
@@ -264,6 +312,7 @@ class RiderTrackingBloc extends Bloc<RiderTrackingEvent, RiderTrackingState> {
 
   @override
   Future<void> close() {
+    _startupTimeoutTimer?.cancel();
     _locationSubscription?.cancel();
     locationService.stopTracking();
     return super.close();

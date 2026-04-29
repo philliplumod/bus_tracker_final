@@ -295,10 +295,29 @@ class RiderTrackingDashboard extends StatelessWidget {
     );
   }
 
-  // Removed error display widget - errors are now handled silently
   Widget _buildError(BuildContext context, RiderTrackingError state) {
-    // Return empty widget instead of showing error
-    return const SizedBox.shrink();
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Icon(Icons.error_outline, size: 40, color: Colors.red[400]),
+            const SizedBox(height: 12),
+            const Text(
+              'Tracking Error',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              state.message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildStopped(BuildContext context) {

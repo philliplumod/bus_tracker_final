@@ -39,7 +39,7 @@ class _LifecycleAwareWidgetState extends State<LifecycleAwareWidget>
     switch (state) {
       case AppLifecycleState.paused:
         _lastPausedTime = DateTime.now();
-        debugPrint('App paused at ${_lastPausedTime}');
+        debugPrint('App paused at $_lastPausedTime');
         break;
 
       case AppLifecycleState.resumed:

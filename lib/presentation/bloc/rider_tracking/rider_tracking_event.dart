@@ -21,6 +21,10 @@ class StopTracking extends RiderTrackingEvent {
   const StopTracking();
 }
 
+class TrackingStartupTimedOut extends RiderTrackingEvent {
+  const TrackingStartupTimedOut();
+}
+
 class LocationUpdateReceived extends RiderTrackingEvent {
   final double latitude;
   final double longitude;

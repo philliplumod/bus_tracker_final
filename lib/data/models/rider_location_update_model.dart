@@ -96,6 +96,7 @@ class RiderLocationUpdateModel extends RiderLocationUpdate {
   }
 
   /// Convert to Firebase-specific JSON format for storage
+  @override
   Map<String, dynamic> toFirebaseJson() {
     return {
       'userId': userId,
@@ -122,5 +123,6 @@ class RiderLocationUpdateModel extends RiderLocationUpdate {
   }
 
   /// Convert to standard JSON format
+  @override
   Map<String, dynamic> toJson() => toFirebaseJson();
 }
